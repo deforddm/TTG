@@ -1,0 +1,697 @@
+/* ============ v3.12 stakes: second areas, enemy tricks, Ohl's other hands, wounds that carry, and the gods ============ */
+
+/* ---- second areas: a fight with def.stage2 goes on into a second map after the first is cleared. Wounds, strain, spent
+   munitions and once-a-fight abilities carry; a squadmate who went down is dragged up at a quarter of their health. ---- */
+function battleDef(id, stage){
+  const d0 = BATTLES[id], tw = d0 && DIFF() !== DIFFS.story && BTUNE[id] && BTUNE[id].waves && stage !== 2 ? BTUNE[id].waves : null;
+  const d = tw ? Object.assign({}, d0, {waves:[...(d0.waves || []), ...tw]}) : d0; // the tuning table's extra waves (31c)
+  if (!d || stage !== 2 || !d.stage2) return d;
+  const s2 = d.stage2;
+  return Object.assign({}, d, {waves:undefined, objective:undefined, allies:s2.keepAllies ? d.allies : undefined, surprise:undefined}, s2,
+    {stage2:null, isStage2:true, xp:(d.xp || 0) + (s2.xp ?? Math.round((d.xp || 0) * .5))});
+}
+/* the breath between the two areas: a line of story, then on */
+function stageBreak(){
+  if (!B) return; const id = B.id, d = BATTLES[id], s2 = d && d.stage2; if (!s2) return win();
+  const carry = {}, used = Object.assign({}, B.used), strain = {}, wards = {};
+  B.units.filter(u => u.side === 'p' && !u.ally).forEach(u => { carry[u.id] = u.hp > 0 ? u.hp : Math.max(1, Math.round(u.maxhp * .25)); strain[u.id] = u.strain || 0; if (u.hp > 0 && u.ward > 0) wards[u.id] = u.ward; }); // v10.2: a ward carries into the second area
+  const downed = B.units.filter(u => u.side === 'p' && !u.ally && u.hp <= 0).map(u => u.name);
+  S.binv = Object.assign({}, S.inv); // the satchel goes on as it is now, not as it was when the first area began
+  const opt = Object.assign({}, B.opt, {stage:2, carry, used, strain, wards, pre:null, surprise:s2.surprise || null, drop:null});
+  S.bopt = opt; save();
+  const sh = $('#sheet'); sh.hidden = false;
+  sh.innerHTML = `<div class="sp">${esc(s2.title || d.title)}</div><div class="note">The first ground is taken. Wounds, strain and spent munitions carry into the next.${downed.length ? ` ${downed.join(' and ')} ${downed.length > 1 ? 'are' : 'is'} dragged back up at a quarter of their health.` : ''}</div>
+    <div class="txt">${fmt(typeof s2.text === 'function' ? s2.text() : (s2.text || 'There is more of it, further in.'))}</div>
+    <div class="choices"><button class="choice" id="bOn">Push on</button></div>`;
+  sh.scrollTop = 0;
+  $('#bOn').onclick = () => { AUDIO.play('click'); sh.hidden = true; startBattle(id, opt); };
+}
+
+/* ---- v10.2 soak (spec §1, David, Nov 6, 2026): a blow that lands loses the target's soak in damage, down to 1. Squad: 1 for a base
+   armour of 15+, +1 for body armour of armour 3; enemies: 1 at armour 16-17, 2 at 18+ and for the K'Chain Che'Malle; never above 2.
+   It is armour, not difficulty: hurt() takes it off after the difficulty and the gap rows have scaled the blow. Only blows and shots
+   (attack()) meet it; munitions, sorcery, crossbows and aimed shots, and any blow with the flanking bonus go past it. ---- */
+const SOAK_CAP = 2, SOAK_PIERCE_ITEMS = new Set(['darucrossbow', 'b2_tcrossbow', 'b7_c3_letherxbow']);
+const SOAK_KCHAIN = k => /K'ell|K'Chain|Che'Malle|Ve'Gath/i.test(((FOES[k] || {}).name || '') + ' ' + k);
+const FOE_SORC = new Set(['clawmage', 'b5_krisnan', 'b7_krisnan', 'b7_lethmage', 'b3_c6_ridden', 'b3_c6_greymage', 'b3_c7_greymage']); // their blow is sorcery
+const foePierce = k => { const f = FOES[k] || {}; return !FOE_SORC.has(k) && (/xbow|crossbow/i.test(k + ' ' + (f.name || '')) || /quarrel|a bolt\b/i.test(f.verb || '')); }; // the enemy crossbowmen
+const soakArmour = id => Object.values((S && S.gear && S.gear[id]) || {}).map(g => ITEMS[g]).find(it => it && it.slot === 'armour' && (it.ac || 0) >= 3) || null;
+function squadSoak(id){ const t = TPL[id]; if (!t) return 0; return Math.min(SOAK_CAP, (t.ac >= 15 ? 1 : 0) + (soakArmour(id) ? 1 : 0)); }
+function foeSoak(k){ const f = FOES[k]; if (!f) return 0; return Math.min(SOAK_CAP, SOAK_KCHAIN(k) || f.ac >= 18 ? 2 : f.ac >= 16 ? 1 : 0); }
+const crossbowIn = id => id === 'kettle' || Object.values((S && S.gear && S.gear[id]) || {}).some(g => SOAK_PIERCE_ITEMS.has(g)); // Kettle's crossbow and its cradle
+/* what turns the blow, for the log line */
+function soakWord(u){ if (u.side === 'e') return `${u.name}'s ${SOAK_KCHAIN(u.kind) ? 'hide' : 'armour'}`;
+  const it = soakArmour(u.id), n = it ? it.name : '', w = /scale/i.test(n) ? 'scale' : /mail/i.test(n) ? 'mail' : /shield/i.test(n) ? 'shield' : 'armour';
+  return `${u.name}'s ${w}`; }
+/* why a blow goes past soak (null if it doesn't): the tag in the log */
+function soakPast(a, t, o, ranged, fl){
+  if (fl) return 'flank';
+  if (o.sorc || o.ground || (a.kind === 'tuft' && !B.def.nomagic) || a.sorcShot) return 'sorcery';
+  if (t.markedUntil >= B.round) return 'aimed';
+  if (a.pierceShot && ranged) return 'pierce';
+  if (a.side === 'p' && !a.ally && !o.dmg && a.rng > 1 && crossbowIn(a.id)) return 'pierce';
+  return null; }
+
+/* ---- v10.2 wards (spec §2): healing past full health becomes a ward, up to 15% of max health (was a quarter; David, Nov 6). One ward at a time: a new one
+   replaces the old only if it is bigger, never adds to it (David). It takes damage after soak, everything included, lasts the fight
+   and its second area, and is gone when the fight ends (it lives on the unit, never on the save). ---- */
+const wardCap = u => Math.round(u.maxhp * .15); // David, Fri Nov 6, 2026: 25% -> 15% (docs/v10.2-balance.md)
+const WARD_SRC = {mend:'denul', wash:'denul', stanch:'denul', b4_rot:'drek', b4_wormgift:'drek', t_song:'spirits'}; // and any ability marked spirit (the Herds' song, the Bargain, the Anvil)
+function wardSource(){ const k = B && B.healSrc; if (!k) return 'plain'; if (WARD_SRC[k]) return WARD_SRC[k]; if (k === 'soliel' || k === 'drek' || k === 'spirits' || k === 'denul') return k;
+  const a = AB[k]; return a && a.spirit ? 'spirits' : 'plain'; }
+const WARD_LINE = {
+  denul:(u, w) => `Clean skin closes over ${u.name}, over where the next cut will be. <em>A ward of ${w}.</em>`,
+  drek:(u, w) => `Something earth-dark settles over ${u.name}, like dried mud. <em>A ward of ${w}.</em>`,
+  soliel:(u, w) => `The oil stays warm on ${u.name}. <em>A ward of ${w}.</em>`,
+  spirits:(u, w) => `The ground stays close to ${u.name}. <em>A ward of ${w}.</em>`,
+  plain:(u, w) => `${u.name} is past whole, and the rest of it holds. <em>A ward of ${w}.</em>`};
+/* v10.3 (David, Nov 8, 2026): only a heal aimed at one squadmate leaves a ward (healW). Group heals, the gods' trickles and lifesteal don't. */
+function healW(u, n){ if (B) B.wardOk = 1; try { heal(u, n); } finally { if (B) B.wardOk = 0; } }
+function wardFrom(u, before, n){
+  if (!B || !B.wardOk || !u || u.side !== 'p' || u.ally || before <= 0 || !(n > 0)) return;
+  const over = before + n - u.maxhp; if (over <= 0) return;
+  const w = Math.min(wardCap(u), over); if (w <= (u.ward || 0)) return; // never stacks; a smaller one changes nothing
+  u.ward = w; float(u, 'ward ' + w, '#dfe8f0'); blog(WARD_LINE[wardSource()](u, w)); }
+
+/* ---- v10.2 death checks (spec §3, David, Nov 6, 2026, 3:25 PM PST). Not in mortal fights (they keep their rule) and not on Story.
+   Elsewhere a downed squadmate stays down for the fight, and at the start of each of their turns rolls a d20 (+1 at level 8, +1 more at 16)
+   against 10 (Soldier) or 11 (Bridgeburner): a natural 20 gets them up at 1 health and they act; a natural 1 is two slips; three
+   successes and they are steady (still down, no wound); three slips and they carry a wound. A squadmate beside them can Stabilise
+   them (their action): no more rolls, no wound, still down. A fight's second area stands them up at a quarter (stageBreak) and the
+   count starts again; a wound already earned stays. ---- */
+const deathOn = () => !!(B && B.def && !B.def.mortal && DIFF() !== DIFFS.story);
+const deathDC = () => (S && S.diff) === 'bridgeburner' ? 11 : 10;
+const deathBonus = () => (((S && S.lvl) || 1) >= 8 ? 1 : 0) + (((S && S.lvl) || 1) >= 16 ? 1 : 0);
+const deathRolling = u => !!(u && u.side === 'p' && !u.ally && u.hp <= 0 && deathOn() && !(u.dc && u.dc.done));
+/* the wounds (Claude's call on the five and their order, worst last): each −3 max health or −1 to hit, one at a time, until the next fire */
+const INJURIES = {
+  cut:{name:'a deep cut', word:'that cut', hp:3, sev:1},
+  head:{name:'a ringing head', word:'that ringing head', hit:1, sev:2},
+  knee:{name:'a bad knee', word:'that knee', hit:1, sev:3},
+  rib:{name:'a cracked rib', word:'that rib', hp:3, sev:4},
+  shoulder:{name:'a wrenched shoulder', word:'that shoulder', hit:1, sev:5}};
+const injuryOf = id => { const k = S && S.injury && S.injury[id]; return k && INJURIES[k] ? Object.assign({key:k}, INJURIES[k]) : null; };
+const injuryFx = w => w.hp ? `−${w.hp} max health` : `−${w.hit} to hit`;
+function giveInjury(u, pick){ const keys = Object.keys(INJURIES), k = pick && INJURIES[pick] ? pick : keys[R(keys.length)], old = injuryOf(u.id);
+  const keep = old && old.sev >= INJURIES[k].sev ? old.key : k, w = INJURIES[keep]; // a second wound: the worse of the two
+  (S.injury ??= {})[u.id] = keep; save();
+  blog(`<em>${u.name} will be carrying ${w.word} a while.</em> ${w.name[0].toUpperCase() + w.name.slice(1)}: ${injuryFx(w)} until the next fire.`); float(u, 'wounded', '#f0b8a8');
+  return keep; }
+/* the fire (or any rest) sees to them. Returns the names mended. */
+function injuryClear(){ if (!S || !S.injury) return []; const ids = Object.keys(S.injury).filter(id => INJURIES[S.injury[id]]); S.injury = null;
+  if (ids.length) note(`By the fire, ${ids.map(NAME).join(' and ')} ${ids.length > 1 ? 'get' : 'gets'} the wound seen to properly.`, 'good'); return ids; }
+/* one roll at the start of a downed squadmate's turn: false if none is due, 'up' on a natural 20, else 'rolled' */
+function deathCheck(u){
+  if (!deathRolling(u)) return false;
+  const d = u.dc ??= {s:0, f:0}, nat = d20(), bon = deathBonus(), dc = deathDC(), tot = nat + bon;
+  const math = SET.dice ? ` <span class="stat">(${nat}${bon ? '+' + bon : ''} vs ${dc})</span>` : '';
+  if (nat === 20) { const at = freeNear(u.x, u.y, u);
+    if (at) { u.x = at.x; u.y = at.y; u.hp = 1; u.deadAt = null; u.dc = null; u.healed = performance.now(); sparks(u.x, u.y, 14, '#9fe0b8', .4); float(u, 'up!', '#9fe0b8');
+      blog(`<em>${u.name} drags in a breath, and another, and gets up.</em> 1 health${math}.`); return 'up'; }
+    d.s++; } // nowhere to stand: it counts as holding on
+  else if (nat === 1) d.f += 2; else if (tot >= dc) d.s++; else d.f++;
+  const count = `${Math.min(3, d.s)} held, ${Math.min(3, d.f)} slipped`;
+  if (d.f >= 3) { d.done = 'wound'; blog(`${u.name} fights for breath and loses the fight for it: three slips${math}.`); giveInjury(u); }
+  else if (d.s >= 3) { d.done = 'steady'; float(u, 'steady', '#9fe0b8'); blog(`${u.name} is steady: still down, still breathing, and no wound${math}.`); }
+  else blog(`${u.name} fights for breath: ${nat === 1 ? 'a bad one, two slips' : tot >= dc ? 'holds on' : 'slips'} (${count})${math}.`);
+  return 'rolled'; }
+AB.stabilise = {name:'Stabilise', desc:()=>'A downed squadmate next to you, still fighting for breath: they stop rolling, with no wound, and stay down. It takes your action.',
+  tiles:u => B.units.filter(p => p !== u && cheb(u, p) === 1 && deathRolling(p)),
+  run(u, x, y){ const t = B.units.find(p => p.x === x && p.y === y && deathRolling(p)); if (!t) return; (t.dc ??= {s:0, f:0}).done = 'stable'; AUDIO.play('heal');
+    float(t, 'stabilised', '#9fe0b8'); sparks(t.x, t.y, 8, '#9fe0b8', .3); blog(`${u.name} gets down beside ${t.name}, packs the wound and holds on. ${t.name} stops fighting for breath: still down, no wound.`); }};
+
+/* ---- the road gets harder: enemies scale with the chapter (Soldier and Bridgeburner; Story keeps the old pitch).
+   Tuned with tools/balance.mjs against a squad at the level the road brings it to. ---- */
+const FSCALE = [{hp:1.2, atk:1, dmg:0}, {hp:1.45, atk:2, dmg:1}, {hp:1.6, atk:3, dmg:1}, {hp:1.7, atk:3, dmg:2}, {hp:1.7, atk:3, dmg:2}, {hp:1.8, atk:4, dmg:2}, {hp:1.9, atk:4, dmg:3}, {hp:1.95, atk:4, dmg:3}];
+/* per fight on top of the chapter's curve ('id' or 'id:2' for a second area): the hold-out fights needed teeth, a few new ones less */
+const BTUNE = {
+  'stone:2':{hp:1.1, atk:1, dmg:1}, hounds_line:{atk:4, dmg:4, waves:[{round:3, foes:[['shade',1,0],['shade',6,0]], text:'Shadow comes after the Hound in pieces, low to the ground.'}]}, hounds_claw:{atk:4, dmg:4, waves:[{round:2, foes:[['shade',6,1]], text:'Something smaller comes through behind it.'}]}, c1_wagon:{atk:2},
+  barrow:{hp:1.1, atk:1}, outriders:{hp:1.2, atk:2}, c2_deserters:{atk:1}, cutpurses:{atk:1}, knives:{hp:.92}, c3_toughs:{hp:1.15, atk:1},
+  andii_roof:{atk:5, dmg:5}, c4_clan:{hp:1.15, atk:1}, c5_dig:{atk:1}, the_rent:{hp:1.2, atk:3, dmg:3},
+  garden_hound:{atk:6, dmg:6, waves:[{round:2, foes:[['shade',0,1],['shade',7,1]], text:'Two lesser shadows come over the garden wall after it.'}]}, tyrant_garden:{atk:4, dmg:3}, lorn_alley:{atk:-3, dmg:-3}, // the alley is mortal: kept near its old edge
+  last_accounting:{hp:.75, atk:-1}, 'last_accounting:2':{hp:.8, atk:-1}, c7_worrygate:{hp:.8, atk:-1}, // the gate was 6–25% for a smart squad
+};
+const foeScale = () => { if (DIFF() === DIFFS.story) return {hp:1, atk:0, dmg:0};
+  const c = FSCALE[clamp((S && S.chapter) || 0, 0, FSCALE.length - 1)], t = (B && (BTUNE[B.id + (B.def && B.def.isStage2 ? ':2' : '')] || BTUNE[B.id])) || {};
+  return {hp:c.hp * (t.hp || 1), atk:c.atk + (t.atk || 0), dmg:c.dmg + (t.dmg || 0)}; };
+/* ---- v7.4 (David, Oct 27, 2026: "Soldier feels too easy late in each book"): a Soldier-only extra from Chapter 3 on, per book and chapter,
+   {hp ×, atk +, dmg +} on top of everything else. Never on Story or Bridgeburner, never in Chapters 1-2. Target: the smart bot wins
+   ~85-95% of first attempts a fight, losing 30-50% of the squad's health (docs/v7.4-notes.md). Book Four keeps its own Soldier column
+   (B4GAP's s, 70). A fight in SOLDIER_SKIP keeps its weight: Book Three's Coral mortal fights (David: as they are). ---- */
+const SOLDIER_LATE = { // David, Tue Oct 27, 2026, 9:20 PM PDT: capped under Bridgeburner (health ×1.25, to hit +1, wounds ×1.2), never above it.
+  // The bot-tuned table (up to ×1.7, +2, +5) made late Soldier harder than Bridgeburner and still left health lost under 30%: docs/v7.4-notes.md.
+  gotm:{3:{hp:1.1, atk:0, dmg:1}, 4:{hp:1.15, atk:1, dmg:1}, 5:{hp:1.2, atk:1, dmg:1}, 6:{hp:1.2, atk:1, dmg:1}, 7:{hp:1.2, atk:1, dmg:1}},
+  dg:{3:{hp:1.1, atk:0, dmg:1}, 4:{hp:1.15, atk:1, dmg:1}, 5:{hp:1.2, atk:1, dmg:1}, 6:{hp:1.2, atk:1, dmg:1}, 7:{hp:1.2, atk:1, dmg:1}},
+  moi:{3:{hp:1.1, atk:0, dmg:1}, 4:{hp:1.15, atk:1, dmg:1}, 5:{hp:1.2, atk:1, dmg:1}, 6:{hp:1.2, atk:1, dmg:1}, 7:{hp:1.2, atk:1, dmg:1}},
+  mt:{3:{hp:1.1, atk:0, dmg:1}, 4:{hp:1.15, atk:1, dmg:1}, 5:{hp:1.2, atk:1, dmg:1}, 6:{hp:1.2, atk:1, dmg:1}, 7:{hp:1.2, atk:1, dmg:1}}}; // v8.0: Book Five is a new cast on Book Two's curve, so Book Two's row (David, Wed Oct 28, 2026, 3:34 PM PDT: keep it for now)
+const SOLDIER_SKIP = new Set(['b3_c7_hunt', 'b3_c7_stakes']);
+/* ---- v10.2 balance (David, Fri Nov 6, 2026, 10:49 PM PST; docs/v10.2-balance.md): per fight, measured as the smart bot's first-try win.
+   Soldier about 90% (the first fight of each book and every survive-N-rounds fight near 100%); Bridgeburner about 75-80%, none under 60%.
+   A row is keyed by fight id, or 'id:2' for a fight's second area (falls back to the id). {hp ×, atk +, dmg +, ac +}.
+   SOLDIER_FIGHT: Soldier only, every book; a fight's own row instead of its chapter's SOLDIER_LATE row (Book Four's B4GAP s still applies).
+   B1GAP / B2GAP / B3GAP_FIGHT / B4GAP_FIGHT: Bridgeburner only, Books One to Four, on top of everything else (Books Three and Four keep
+   their chapter rows, B3GAP and B4GAP, on both difficulties). Books Five to Seven keep their own per-fight rows (B5GAP_FIGHT, B6GAP, B7GAP). ---- */
+const SOLDIER_FIGHT = {
+  b7_c1_riders:{ac:3, atk:3, hp:3.0, dmg:6}, // rg 85% won, 34% health lost
+  b7_c1_tally:{ac:3, atk:3, hp:2.7, dmg:5}, // rg 100% won, 15% health lost
+  b7_c2_gate:{ac:4, atk:4, hp:3.06, dmg:6}, // rg 95% won, 32% health lost
+  b7_c2_alley:{ac:2, atk:2, hp:2.03, dmg:4}, // rg 100% won, 35% health lost
+  b7_c2_bridge:{ac:2, atk:3, hp:2.24, dmg:5}, // rg 100% won, 33% health lost
+  b7_c3_farm:{ac:4, atk:4, hp:3.04, dmg:5}, // rg 90% won, 24% health lost
+  b7_c3_road:{ac:6, atk:6, hp:3.75, dmg:7}, // rg 95% won, 19% health lost
+  b7_c3_factor:{ac:4, atk:4, hp:4.06, dmg:7}, // rg 90% won, 32% health lost
+  b7_c4_riot:{ac:4, atk:4, hp:3.65, dmg:5}, // rg 95% won, 27% health lost
+  b7_c4_edurcamp:{ac:4, atk:4, hp:2.86, dmg:5}, // rg 85% won, 44% health lost
+  b7_c4_patriots:{ac:3, atk:3, hp:1.88, dmg:4}, // rg 100% won, 32% health lost
+  b7_c5_road:{ac:5, atk:5, hp:3.51, dmg:6}, // rg 95% won, 21% health lost
+  b7_c5_bailiff:{ac:8, atk:8, hp:7.2, dmg:10}, // rg 85% won, 35% health lost
+  b7_c6_deserters:{ac:4, atk:4, hp:2.97, dmg:5}, // rg 90% won, 36% health lost
+  b7_c6_landing:{ac:2, atk:2, hp:1.81, dmg:3}, // rg 95% won, 37% health lost
+  b7_c6_stand:{ac:3, atk:3, hp:2.0, dmg:4}, // rg 95% won, 37% health lost
+  b7_c7_gate:{ac:2, atk:3, hp:2.21, dmg:5}, // rg 85% won, 30% health lost
+  b7_c7_streets:{ac:2, atk:2, hp:2.56, dmg:5}, // rg 90% won, 24% health lost
+  b7_c7_bridge:{ac:4, atk:4, hp:3.51, dmg:6}, // rg 95% won, 26% health lost
+  b6_c1_rearguard:{ac:1, atk:1, hp:1.95, dmg:4}, // bh 90% won, 25% health lost
+  b6_c1_edge:{ac:4, atk:4, hp:3.58, dmg:6}, // bh 90% won, 33% health lost
+  b6_c1_patrol:{ac:2, atk:2, hp:2.87, dmg:5}, // bh 85% won, 41% health lost
+  b6_c2_shrine:{ac:2, atk:2, hp:2.61, dmg:5}, // bh 85% won, 45% health lost
+  b6_c2_village:{ac:1, atk:1, hp:2.02, dmg:3}, // bh 85% won, 45% health lost
+  b6_c2_road:{hp:1.47, dmg:2}, // bh 95% won, 44% health lost
+  b6_c3_sally:{ac:1, atk:1, hp:1.96, dmg:3}, // bh 95% won, 21% health lost
+  b6_c3_streets:{ac:2, atk:2, hp:2.1, dmg:4}, // bh 95% won, 36% health lost
+  b6_c3_strays:{ac:4, atk:4, hp:4.05, dmg:6}, // bh 95% won, 32% health lost
+  b6_c4_carts:{ac:4, atk:4, hp:3.38, dmg:6}, // bh 95% won, 30% health lost
+  b6_c4_cult:{ac:3, atk:3, hp:3.31, dmg:5}, // bh 90% won, 33% health lost
+  b6_c4_streets:{ac:2, atk:2, hp:2.18, dmg:3}, // bh 95% won, 19% health lost
+  b6_c5_village:{ac:4, atk:4, hp:3.24, dmg:6}, // bh 95% won, 35% health lost
+  b6_c5_deserters:{ac:2, atk:2, hp:2.0, dmg:4}, // bh 95% won, 21% health lost
+  b6_c5_boats:{ac:1, atk:1, hp:2.38, dmg:4}, // bh 90% won, 31% health lost
+  b6_c6_night:{ac:1, atk:1, hp:1.96, dmg:3}, // bh 95% won, 32% health lost
+  b6_c6_wells:{ac:4, atk:4, hp:3.5, dmg:6}, // bh 90% won, 27% health lost
+  b6_c6_cult:{ac:1, atk:1, hp:1.89, dmg:4}, // bh 100% won, 38% health lost
+  b6_c7_alley:{ac:5, atk:5, hp:4.48, dmg:8}, // bh 90% won, 38% health lost
+  b6_c7_jetty:{ac:3, atk:3, hp:2.8, dmg:6}, // bh 85% won, 41% health lost
+  b6_c7_guard:{ac:2, atk:2, hp:2.64, dmg:6}, // bh 85% won, 34% health lost
+  b6_c7_streets:{ac:3, atk:3, hp:3.64, dmg:6}, // bh 95% won, 27% health lost
+  b5_c1_lowwalk:{hp:1.55, dmg:2}, // mt 85% won, 43% health lost
+  b5_c2_looters:{atk:1, hp:2.35, dmg:6}, // mt 95% won, 36% health lost
+  b5_c2_hulk:{hp:1.3, dmg:1}, // mt 95% won, 29% health lost
+  b5_c2_wreckers:{atk:1, hp:1.7, dmg:3}, // mt 90% won, 40% health lost
+  b5_c3_rivermen:{hp:1.38, dmg:2}, // mt 100% won, 31% health lost
+  b5_c3_deserters:{hp:1.54, dmg:3}, // mt 100% won, 5% health lost
+  b5_c3_bank:{atk:1, hp:2.25, dmg:6}, // mt 90% won, 30% health lost
+  b5_c4_gully:{atk:2, hp:2.13, dmg:5}, // mt 100% won, 34% health lost
+  b5_c4_wraiths:{atk:2, hp:2.07, dmg:5}, // mt 95% won, 26% health lost
+  b5_c4_demon:{atk:1, hp:1.72, dmg:3}, // mt 95% won, 39% health lost
+  b5_c4_wolves:{atk:2, hp:2.1, dmg:5}, // mt 90% won, 39% health lost at hp 2.18; hp 2.1 keeps it within 1.1x the eased Bridgeburner row (v13.1, Nov 11)
+  b5_c5_farm:{atk:2, hp:2.28, dmg:5}, // mt 95% won, 40% health lost
+  b5_c5_wagons:{atk:2, hp:2.28, dmg:5}, // mt 90% won, 36% health lost
+  b5_c6_shore:{atk:2, hp:2.58, dmg:6}, // mt 95% won, 35% health lost
+  b5_c6_channel:{atk:1, hp:1.8, dmg:3}, // mt 90% won, 42% health lost
+  b5_c6_hills:{atk:1, hp:1.8, dmg:3}, // mt 95% won, 33% health lost
+  b5_c6_flight:{atk:1, hp:1.74, dmg:3}, // mt 90% won, 36% health lost
+  b5_c7_looters:{atk:2, hp:2.28, dmg:5}, // mt 90% won, 32% health lost
+  b5_c7_wolves:{atk:1, hp:1.5, dmg:2}, // mt 90% won, 41% health lost
+  b5_c7_barricade:{atk:1, hp:1.56, dmg:2}, // mt 90% won, 38% health lost
+  b2_cistern:{atk:1, hp:1.55, dmg:2}, // dg 95% won, 20% health lost
+  b2_batrol:{hp:1.05}, // dg 90% won, 46% health lost
+  b2_spring:{hp:1.3, dmg:1}, // dg 100% won, 29% health lost
+  b2_tithwell:{hp:1.35, dmg:1}, // dg 100% won, 30% health lost
+  b2_westbank:{hp:1.4, dmg:2}, // dg 85% won, 34% health lost
+  b2_raid:{atk:1, hp:1.65, dmg:3}, // dg 85% won, 40% health lost
+  b2_bait:{hp:1.26, dmg:1}, // dg 95% won, 29% health lost
+  b2_pull:{hp:1.38, dmg:2}, // dg 90% won, 47% health lost
+  b2_ropes:{atk:2, hp:1.78, dmg:3}, // dg 95% won, 37% health lost
+  b2_envoy:{atk:1, hp:1.61, dmg:3}, // dg 95% won, 32% health lost
+  b2_bridge:{atk:1, hp:1.26, dmg:1}, // dg 90% won, 33% health lost
+  b2_mounds:{atk:1, hp:1.62, dmg:2}, // dg 95% won, 32% health lost
+  b2_herd:{atk:2, hp:1.86, dmg:3}, // dg 100% won, 32% health lost
+  b2_dryraid:{atk:1, hp:1.62, dmg:2}, // dg 90% won, 44% health lost
+  b2_sanimon:{atk:1, hp:1.38, dmg:1}, // dg 100% won, 37% health lost
+  b2_dojal:{atk:1, hp:1.74, dmg:3}, // dg 85% won, 44% health lost
+  b2_silver:{atk:1, hp:1.74, dmg:3}, // dg 85% won, 40% health lost
+  b2_runway:{atk:1, hp:1.68, dmg:3}, // dg 100% won, 30% health lost
+  b2_postern:{atk:1, hp:1.68, dmg:3}, // dg 90% won, 35% health lost
+  stone:{hp:1.1}, // gotm 95% won, 45% health lost
+  accounting:{hp:0.84, dmg:-1}, // gotm 85% won, 55% health lost
+  barrow:{hp:1.3, dmg:1}, // gotm 95% won, 32% health lost
+  outriders:{atk:1, hp:1.75, dmg:3}, // gotm 85% won, 40% health lost
+  c2_deserters:{hp:1.4, dmg:2}, // gotm 95% won, 33% health lost
+  cutpurses:{hp:1.21, dmg:1}, // gotm 95% won, 30% health lost
+  c3_toughs:{hp:1.32, dmg:2}, // gotm 90% won, 37% health lost
+  guild_roofs:{atk:1, hp:1.44, dmg:2}, // gotm 95% won, 33% health lost
+  guild_roofs_2:{atk:1, hp:1.61, dmg:3}, // gotm 100% won, 12% health lost
+  reprisal:{atk:1, hp:1.44, dmg:2}, // gotm 100% won, 31% health lost
+  c4_clan:{atk:2, hp:1.72, dmg:3}, // gotm 85% won, 42% health lost
+  barrow_wards:{atk:1, hp:1.5, dmg:2}, // gotm 100% won, 30% health lost
+  c5_dig:{atk:1, hp:1.62, dmg:2}, // gotm 85% won, 34% health lost
+  house_guards:{atk:2, hp:2.1, dmg:4}, // gotm 100% won, 34% health lost
+  terrace_knives:{atk:2, hp:2.1, dmg:4}, // gotm 95% won, 29% health lost
+  terrace_knives_2:{atk:2, hp:1.8, dmg:3}, // gotm 90% won, 37% health lost
+  the_mines:{atk:2, hp:1.92, dmg:4}, // gotm 95% won, 38% health lost
+  c6_bonfire:{atk:2, hp:1.92, dmg:4}, // gotm 100% won, 35% health lost
+  last_accounting:{atk:2, hp:1.8, dmg:3}, // gotm 85% won, 40% health lost
+  c7_worrygate:{atk:2, hp:1.8, dmg:3}, // gotm 100% won, 30% health lost
+  b3_c1_brawl:{hp:1.4, dmg:2}, // moi 95% won, 16% health lost
+  b3_c1_herds:{atk:1, hp:1.5, dmg:2}, // moi 85% won, 41% health lost
+  b3_c2_hill:{hp:1.1}, // moi 85% won, 35% health lost
+  b3_c2_herdfight:{hp:1.15}, // moi 85% won, 36% health lost
+  b3_c2_wagonfight:{hp:1.25, dmg:1}, // moi 95% won, 30% health lost
+  b3_c3_picket:{atk:1, hp:1.98, dmg:5}, // moi 95% won, 18% health lost
+  b3_c3_camps:{atk:1, hp:1.76, dmg:4}, // moi 95% won, 33% health lost
+  b3_c3_granary:{atk:1, hp:1.81, dmg:4}, // moi 90% won, 24% health lost
+  b3_c4_breakout:{hp:0.83, dmg:-1}, // moi 90% won, 41% health lost
+  b3_c4_brawl:{atk:3, hp:2.47, dmg:6}, // moi 95% won, 37% health lost
+  b3_c5_ford:{atk:1, hp:1.01}, // moi 95% won, 45% health lost
+  b3_c5_town:{atk:1, hp:1.01}, // moi 85% won, 47% health lost
+  b3_c5_wellfight:{atk:1, hp:1.74, dmg:3}, // moi 95% won, 27% health lost
+  b3_c6_field:{atk:1, hp:1.62, dmg:2}, // moi 95% won, 22% health lost
+  b3_c6_landing:{atk:2, hp:2.04, dmg:4}, // moi 90% won, 36% health lost
+  b3_c6_condors:{atk:1, hp:1.68, dmg:3}, // moi 90% won, 34% health lost
+  b3_c6_raid:{atk:1, hp:1.5, dmg:2}, // moi 95% won, 31% health lost
+  b3_c6_ambush:{atk:1, hp:1.68, dmg:3}, // moi 95% won, 30% health lost
+  b3_c7_trenchfight:{atk:1, hp:1.44, dmg:2}, // moi 85% won, 47% health lost
+  b3_c7_stairs:{atk:3, hp:2.7, dmg:7}, // moi 95% won, 20% health lost
+  b3_c7_side:{atk:1, hp:1.15, dmg:1}, // moi 90% won, 46% health lost
+  b3_c7_probe:{atk:1, hp:1.38, dmg:1}, // moi 95% won, 32% health lost
+  b3_c7_gully:{atk:3, hp:2.88, dmg:8}, // moi 95% won, 31% health lost
+  b3_c7_herds:{atk:1, hp:1.26, dmg:1}, // moi 85% won, 49% health lost
+  b4_c1_dig:{hp:1.1}, // hoc 85% won, 43% health lost
+  b4_c1_watch:{hp:1.2, dmg:1}, // hoc 95% won, 36% health lost
+  b4_c2_robbers:{hp:0.92, dmg:-1}, // hoc 95% won, 32% health lost
+  b4_c2_probe:{hp:1.3, dmg:1}, // hoc 93% won, 38% health lost
+  b4_c3_scavengers:{hp:0.8, dmg:-1}, // hoc 95% won, 43% health lost
+  b4_c3_poles:{hp:0.84, dmg:-1}, // hoc 90% won, 47% health lost
+  b4_c4_wagons:{hp:0.92, dmg:-1}, // hoc 100% won, 40% health lost
+  b4_c4_wounded:{atk:-1, hp:0.76, dmg:-2}, // hoc 100% won, 25% health lost
+  b4_c4_picket:{atk:-1, hp:0.68, dmg:-2}, // hoc 95% won, 26% health lost
+  b4_c5_wallriders:{hp:0.96}, // hoc 90% won, 41% health lost
+  b4_c5_seep:{atk:-1, hp:0.76, dmg:-2}, // hoc 95% won, 30% health lost
+  b4_c5_rearguard:{hp:0.84, dmg:-1}, // hoc 95% won, 41% health lost
+  b4_c5_deserters:{hp:0.84, dmg:-1}, // hoc 100% won, 42% health lost
+  b4_c6_nest:{hp:0.8, dmg:-1}, // hoc 90% won, 43% health lost
+  b4_c6_dusk:{hp:1.1}, // hoc 93% won, 40% health lost
+  b4_c6_outpost:{hp:0.88, dmg:-1}, // hoc 100% won, 33% health lost
+  b4_c7_outriders:{hp:0.96}, // hoc 90% won, 53% health lost
+  b4_c7_breakout:{hp:1.15}, // hoc 90% won, 35% health lost
+  b4_c7_spur:{hp:0.84, dmg:-1}, // hoc 93% won, 43% health lost
+};
+const B1GAP = { // Book One, Bridgeburner
+  deserters:{hp:1.2, dmg:1}, // 65% won, 63% health lost
+  stone:{hp:0.92, dmg:-1}, // 85% won, 53% health lost
+  hounds_line:{hp:1.4, dmg:2}, // 95% won, 58% health lost
+  hounds_claw:{hp:1.4, dmg:2}, // 100% won, 27% health lost
+  accounting:{atk:-1, hp:0.64, dmg:-2}, // 75% won, 63% health lost
+  c1_wagon:{hp:0.88, dmg:-1}, // 75% won, 65% health lost
+  barrow:{hp:1.15}, // 75% won, 51% health lost
+  outriders:{hp:1.45, dmg:2}, // 80% won, 47% health lost
+  c2_deserters:{hp:1.25, dmg:1}, // 85% won, 53% health lost
+  knives:{hp:0.92, dmg:-1}, // 85% won, 49% health lost
+  c3_toughs:{hp:1.15}, // 85% won, 54% health lost
+  guild_roofs:{hp:1.45, dmg:2}, // 65% won, 59% health lost
+  guild_roofs_2:{atk:3, hp:2.385, dmg:8}, // v13.1 (Nov 11): eased, 66% won, 62% health lost (50 runs; was 50%)
+  andii_roof:{hp:1.4, dmg:2}, // 100% won, 27% health lost
+  reprisal:{hp:1.15}, // 85% won, 45% health lost
+  c4_clan:{hp:1.45, dmg:2}, // 90% won, 39% health lost
+  barrow_wards:{hp:1.305, dmg:2, atk:0}, // v13.1 (Nov 11): eased, 76% won, 53% health lost (50 runs; was 45%)
+  c5_dig:{hp:1.4, dmg:2}, // 75% won, 53% health lost
+  the_rent:{hp:1.4, dmg:2}, // 100% won, 27% health lost
+  house_guards:{atk:1, hp:1.485, dmg:3}, // v13.1 (Nov 11): eased, 84% won, 55% health lost (50 runs; was 40%)
+  terrace_knives:{atk:1, hp:1.458, dmg:3}, // v13.1 (Nov 11): eased, 86% won, 42% health lost (50 runs; was 40%)
+  terrace_knives_2:{atk:1, hp:1.5, dmg:2}, // 75% won, 55% health lost
+  garden_hound:{hp:1.4, dmg:2}, // 100% won, 14% health lost
+  tyrant_garden:{hp:1.4, dmg:2}, // 100% won, 25% health lost
+  the_mines:{atk:1, hp:1.65, dmg:3}, // 70% won, 52% health lost
+  c6_bonfire:{atk:1, hp:1.62, dmg:4}, // v13.1 (Nov 11): eased, 74% won, 65% health lost (50 runs; was 35%)
+  lorn_alley:{hp:1.4, dmg:2}, // 100% won, 5% health lost
+  last_accounting:{hp:1.45, dmg:2}, // 90% won, 35% health lost
+  c7_worrygate:{atk:1, hp:1.7, dmg:3}, // 75% won, 49% health lost
+};
+const B2GAP = { // Book Two, Bridgeburner
+  b2_street:{hp:1.1}, // 85% won, 47% health lost
+  b2_cistern:{atk:1, hp:1.55, dmg:2}, // 80% won, 48% health lost
+  b2_gate:{hp:1.35, dmg:1}, // 70% won, 63% health lost
+  b2_batrol:{hp:0.88, dmg:-1}, // 70% won, 69% health lost
+  b2_spring:{hp:1.15}, // 75% won, 57% health lost
+  b2_tithwell:{hp:1.081, dmg:1, atk:0}, // v13.1 (Nov 11): eased, 68% won, 62% health lost (80 runs; was 40%)
+  b2_tail:{hp:1.4, dmg:2}, // 100% won, 25% health lost
+  b2_westbank:{hp:1.125, dmg:1, atk:0}, // v13.1 (Nov 11): eased, 70% won, 53% health lost (80 runs; was 40%)
+  b2_raid:{hp:1.45, dmg:2}, // 80% won, 49% health lost
+  b2_bait:{hp:1.067, dmg:1, atk:0}, // v13.1 (Nov 11): eased, 74% won, 51% health lost (50 runs; was 30%)
+  b2_pull:{hp:1.15}, // 85% won, 49% health lost
+  b2_ring:{hp:0.96}, // 65% won, 46% health lost
+  b2_ropes:{atk:1, hp:1.6, dmg:3}, // 85% won, 57% health lost
+  b2_envoy:{hp:1.4, dmg:2}, // 80% won, 47% health lost
+  b2_bridge:{hp:1.15}, // 90% won, 52% health lost
+  b2_mounds:{hp:1.4, dmg:2}, // 83% won, 47% health lost
+  b2_herd:{atk:1, hp:1.55, dmg:2}, // 90% won, 45% health lost
+  b2_dryraid:{hp:1.25, dmg:1}, // 75% won, 53% health lost
+  b2_sanimon:{hp:1.305, dmg:2, atk:0}, // v13.1 (Nov 11): eased, 72% won, 79% health lost (50 runs; was 55%)
+  b2_dojal:{hp:1.4, dmg:2}, // 80% won, 55% health lost
+  b2_silver:{hp:1.45, dmg:2}, // 75% won, 53% health lost
+  b2_runway:{atk:1, hp:1.5, dmg:2}, // 85% won, 53% health lost
+  b2_barrow:{hp:1.4, dmg:2}, // 100% won, 45% health lost
+  b2_postern:{atk:1, hp:1.5, dmg:2}, // 75% won, 54% health lost
+};
+const B3GAP_FIGHT = { // Book Three, Bridgeburner, on top of B3GAP
+  b3_c1_tunnels:{hp:1.35, dmg:1}, // 85% won, 45% health lost
+  b3_c1_brawl:{atk:1, hp:1.55, dmg:2}, // 70% won, 49% health lost
+  b3_c1_herds:{hp:1.1}, // 80% won, 44% health lost
+  b3_c1_train:{hp:1.175, dmg:1, atk:0}, // v13.1 (Nov 11): eased, 78% won, 46% health lost (50 runs; was 45%)
+  b3_c2_hill:{hp:0.792, dmg:-1, atk:0}, // v13.1 (Nov 11): eased, 68% won, 57% health lost (50 runs; was 35%)
+  b3_c2_night:{hp:0.828, dmg:-1, atk:0}, // v13.1 (Nov 11): eased, 82% won, 50% health lost (50 runs; was 55%)
+  b3_c2_herdfight:{hp:0.8, dmg:-1}, // 65% won, 54% health lost
+  b3_c2_wagonfight:{hp:0.96}, // 80% won, 43% health lost
+  b3_c3_picket:{atk:1, hp:1.44, dmg:3}, // v13.1 (Nov 11): eased, 76% won, 47% health lost (50 runs; was 50%)
+  b3_c3_camps:{hp:1.45, dmg:2}, // 90% won, 39% health lost
+  b3_c3_granary:{atk:1, hp:1.75, dmg:3}, // 80% won, 38% health lost
+  b3_c4_hunt:{hp:1.2, dmg:1}, // 70% won, 69% health lost
+  b3_c4_breakout:{atk:-1, hp:0.612, dmg:-2}, // v13.1 (Nov 11): eased, 82% won, 46% health lost (50 runs; was 55%)
+  b3_c4_brawl:{atk:2, hp:1.8, dmg:5}, // v13.1 (Nov 11): eased, 84% won, 42% health lost (50 runs; was 50%)
+  b3_c5_ford:{hp:0.88, dmg:-1}, // 75% won, 57% health lost
+  b3_c5_town:{hp:0.8, dmg:-1}, // 80% won, 52% health lost
+  b3_c5_wellfight:{atk:1, hp:1.5, dmg:2}, // 70% won, 52% health lost
+  b3_c6_field:{hp:1.45, dmg:2}, // 80% won, 36% health lost
+  b3_c6_landing:{atk:1, hp:1.55, dmg:2}, // 65% won, 49% health lost
+  b3_c6_condors:{hp:1.4, dmg:2}, // 70% won, 54% health lost
+  b3_c6_raid:{hp:1.3, dmg:1}, // 80% won, 40% health lost
+  b3_c6_ambush:{hp:1.35, dmg:1}, // 80% won, 42% health lost
+  b3_c7_trenchfight:{hp:1.08, dmg:1, atk:0}, // v13.1 (Nov 11): eased, 70% won, 56% health lost (50 runs; was 55%)
+  b3_c7_stairs:{atk:2, hp:2.45, dmg:7}, // 75% won, 41% health lost
+  b3_c7_hunt:{atk:-1, hp:0.68, dmg:-2}, // 70% won, 54% health lost
+  b3_c7_probe:{hp:1.15}, // 70% won, 54% health lost
+  b3_c7_gully:{atk:3, hp:2.55, dmg:7}, // 75% won, 48% health lost
+  b3_c7_stakes:{hp:0.851, dmg:-1, atk:0}, // v13.1 (Nov 11): eased, 80% won, 38% health lost (50 runs; was 45%)
+  b3_c7_herds:{hp:0.96}, // 85% won, 52% health lost
+  b3_c3_hold:{hp:0.81, dmg:-1, atk:0}, // v13.1 (Nov 11): eased, 84% won, 43% health lost (50 runs; was 50%)
+};
+const B4GAP_FIGHT = { // Book Four, Bridgeburner, on top of B4GAP
+  b4_c1_runners:{hp:1.15}, // 80% won, 49% health lost
+  b4_c1_dig:{hp:0.864, dmg:0, atk:0}, // v13.1 (Nov 11): eased, 72% won, 56% health lost (50 runs; was 45%)
+  b4_c1_watch:{hp:0.945, dmg:0, atk:0}, // v13.1 (Nov 11): eased, 78% won, 50% health lost (50 runs; was 50%)
+  b4_c1_brawl:{hp:1.08, dmg:1, atk:0}, // v13.1 (Nov 11): eased, 78% won, 58% health lost (50 runs; was 55%)
+  b4_c2_robbers:{hp:0.96}, // 80% won, 49% health lost
+  b4_c2_probe:{hp:1.153, dmg:1, atk:0}, // v13.1 (Nov 11): eased, 74% won, 56% health lost (50 runs; was 50%)
+  b4_c2_hill:{hp:1.044, dmg:0, atk:0}, // v13.1 (Nov 11): eased, 72% won, 57% health lost (50 runs; was 50%)
+  b4_c3_raiders:{hp:0.96}, // 65% won, 56% health lost
+  b4_c3_brawl:{hp:1.4, dmg:2}, // 100% won, 49% health lost
+  b4_c3_scavengers:{hp:0.792, dmg:-1, atk:0}, // v13.1 (Nov 11): eased, 82% won, 55% health lost (50 runs; was 50%)
+  b4_c3_poles:{hp:0.756, dmg:-1, atk:0}, // v13.1 (Nov 11): eased, 80% won, 54% health lost (50 runs; was 50%)
+  b4_c4_wagons:{hp:0.82, dmg:0, atk:0}, // v13.1 (Nov 11): eased, 72% won, 65% health lost (50 runs; was 40%)
+  b4_c4_lancers_brawl:{hp:1.4, dmg:2}, // 100% won, 32% health lost
+  b4_c4_wounded:{hp:0.84, dmg:-1}, // 80% won, 62% health lost
+  b4_c4_picket:{atk:-1, hp:0.76, dmg:-2}, // 80% won, 55% health lost
+  b4_c5_wallriders:{hp:0.96}, // 75% won, 56% health lost
+  b4_c5_seep:{hp:0.792, dmg:-1, atk:0}, // v13.1 (Nov 11): eased, 68% won, 68% health lost (50 runs; was 25%)
+  b4_c5_rearguard:{hp:0.84, dmg:-1}, // 80% won, 47% health lost
+  b4_c5_deserters:{hp:0.828, dmg:-1, atk:0}, // v13.1 (Nov 11): eased, 76% won, 61% health lost (50 runs; was 55%)
+  b4_c6_nest:{hp:0.72, dmg:-1, atk:0}, // v13.1 (Nov 11): eased, 82% won, 58% health lost (50 runs; was 55%)
+  b4_c6_dusk:{hp:1.1}, // 80% won, 49% health lost
+  b4_c6_patrol:{hp:0.99, dmg:0, atk:0}, // v13.1 (Nov 11): eased, 74% won, 59% health lost (50 runs; was 45%)
+  b4_c6_outpost:{hp:0.84, dmg:-1}, // 85% won, 50% health lost
+  b4_c7_outriders:{hp:0.864, dmg:0, atk:0}, // v13.1 (Nov 11): eased, 75% won, 58% health lost (80 runs; was 55%)
+  b4_c7_breakout:{hp:1.15}, // 95% won, 42% health lost
+  b4_c7_spur:{hp:0.88, dmg:-1}, // 70% won, 61% health lost
+};
+const fightRow = t => { if (!t || !B || !B.id) return null; return (B.def && B.def.isStage2 && t[B.id + ':2']) || t[B.id] || null; };
+const bbFight = () => { if (!S || (S.diff || 'soldier') !== 'bridgeburner') return null;
+  return fightRow({gotm:B1GAP, dg:B2GAP, moi:B3GAP_FIGHT, hoc:B4GAP_FIGHT}[S.book || 'gotm']); };
+const soldierLate = () => { if (!S || (S.diff || 'soldier') !== 'soldier') return null;
+  const own = fightRow(SOLDIER_FIGHT); if (own) return own;
+  const t = SOLDIER_LATE[S.book || 'gotm'], s = t && t[S.chapter || 0];
+  return s && !(B && B.id && SOLDIER_SKIP.has(B.id)) ? s : null; };
+/* the longer road pays more fights; each pays a little less, so the squad levels about as it did (and not to the cap by Chapter Four) */
+const XPK = .6;
+
+/* ---- enemy tricks: one or two a kind, announced in the log. Off on Story. ---- */
+const FOE_SK = {
+  xbow:['pin'], clawcrossbow:['pin'],
+  shade:['drain'], warrenspawn:['bleed'],
+  hound:['pounce','howl'], houndhurt:['pounce','howl'],
+  assassin:['shadowstep','bleed'], clawknife:['shadowstep','bleed'], knife:['bleed'], guildknife:['bleed'],
+  guildveteran:['parry','bleed'], greycloak:['mark','parry'],
+  wight:['chill'], rime:['chill'], ward:['root'],
+  rhivi:['hitrun'], cutpurse:['hitrun'], bruiser:['shove'],
+  houseguard:['reach'], housecaptain:['reach','rally'],
+  clawmage:['daze'], andiihunter:['darkness'],
+};
+const SORC = ['drain','shadowstep','howl','daze','darkness','mark']; // what otataral takes away
+function foeSkills(k, f){ if (DIFF() === DIFFS.story) return []; return (f.sk || FOE_SK[k] || []).slice(); }
+const hasSk = (u, k) => !!(u && u.sk && u.sk.includes(k) && !(u.otat && SORC.includes(k)));
+/* what a blow from an enemy leaves behind on a squadmate */
+function foeRiders(a, t, dmg){
+  if (!a || a.side !== 'e' || !t || t.side !== 'p') return;
+  if (hasSk(a, 'bleed') && t.hp > 0) { t.bleed = 2; float(t, 'bleeding', '#e0574a'); }
+  if ((hasSk(a, 'chill') || hasSk(a, 'pin')) && t.hp > 0) { t.slowTurn = true; float(t, hasSk(a, 'pin') ? 'pinned' : 'chilled', hasSk(a, 'pin') ? '#cfc8b8' : '#bfe8ff'); }
+  if (hasSk(a, 'root') && t.hp > 0) { t.prone = true; float(t, 'held', '#9a86e0'); }
+  if (hasSk(a, 'drain') && a.hp > 0 && dmg > 0) { heal(a, dmg); blog(`${a.name} drinks something out of ${t.name} and is whole again.`); }
+  if (hasSk(a, 'shove') && t.hp > 0) { const dx = Math.sign(t.x - a.x), dy = Math.sign(t.y - a.y), nx = t.x + dx, ny = t.y + dy;
+    if ((dx || dy) && pitAt(nx, ny)) { blog(`${a.name} shoves ${t.name} back toward the edge.`); overEdge(t, {x:nx, y:ny}, 'shoved'); } // the pit, the drop, the lake (031_battle.js)
+    else if ((dx || dy) && free(nx, ny, t)) { t.x = nx; t.y = ny; blog(`${a.name} shoves ${t.name} back a pace.`); float(t, 'shoved', '#cfc8b8'); enterFire(t); } }
+}
+/* the squad's own state at the start of its turn: bleeding, slowed, held down. Returns false if the turn is lost to it. */
+function squadTurnStart(u){
+  if (typeof boonTurnStart === 'function') boonTurnStart(u); // the gods' boons (below): Soliel stops the bleeding before it bites
+  if (u.bleed > 0) { u.bleed--; blog(`${u.name} is bleeding.`); hurt(u, roll(1,4)); }
+  if (u.slowTurn) { u.slowTurn = false; B.mvLeft = Math.max(0, u.mv - 2); float(u, 'slowed', '#bfe8ff'); }
+  if (u.prone) { u.prone = false; B.mvLeft = 0; blog(`${u.name} spends the turn getting up.`); float(u, 'getting up', '#cfc8b8'); }
+  B.units.forEach(p => { if (p.stanch === u) p.stanch = null; }); // Ohl's hold lasts until his next turn
+}
+/* an enemy's trick before its ordinary move: true if it used the whole turn */
+async function foeSpecial(u, gone){
+  const sq = party().filter(p => !p.ally), t0 = sq.slice().sort((a, b) => a.hp - b.hp)[0]; if (!sq.length) return false;
+  u.cd = u.cd || {}; const ready = k => hasSk(u, k) && !(u.cd[k] > B.round);
+  const adjFree = t => DIRS.map(([dx, dy]) => ({x:t.x + dx, y:t.y + dy})).filter(p => free(p.x, p.y, u));
+  // free actions first
+  if (ready('howl') && B.round >= 1 && !B.used['howl_' + u.kind]) { B.used['howl_' + u.kind] = 1; B.howlUntil = B.round + 1; AUDIO.play('growl'); shakeMap(); blog(`<em>${u.name} howls.</em> Every hand in the squad shakes: −1 to hit through the next round.`); await wait(500); if (gone()) return true; }
+  if (ready('rally') && u.hp < u.maxhp / 2 && !u.rallied) { u.rallied = true; B.foeRallyUntil = B.round + 1; blog(`${u.name} bellows for the household. The guards take heart: +2 to hit through the next round.`); float(u, 'rally', '#f08a7c'); await wait(400); if (gone()) return true; }
+  if (ready('darkness') && u.hp < u.maxhp && !u.darkened) { u.darkened = true; u.darkUntil = B.round + 1; blog(`Kurald Galain closes round ${u.name} like a cloak: −2 to hit it through the next round.`); float(u, 'darkness', '#3a3070'); await wait(400); if (gone()) return true; }
+  if (ready('mark')) { const t = sq.filter(p => cheb(u, p) <= 6).sort((a, b) => a.hp - b.hp)[0]; if (t) { u.cd.mark = B.round + 2; t.clawMarkUntil = B.round + 1; blog(`${u.name} looks at ${t.name} and writes something down. <em>Every Claw blade on the field knows the name now: +2 to hit them.</em>`); float(t, 'marked', '#f08a7c'); await wait(400); if (gone()) return true; } }
+  // whole-turn tricks
+  if (ready('daze')) { const t = sq.filter(p => cheb(u, p) <= 4 && canShoot(u, p))[0]; if (t && R(3) === 0) { u.cd.daze = B.round + 2;
+    const res = d20() + (TPL[t.id] ? statOf(t.id, 'wits') : 0) + (t.steady ? 2 : 0); if (t.steady) { t.steady = false; blog(`${t.name} was steady for it.`); } B.fx.push({kind:'bolt', from:{x:u.x,y:u.y}, to:{x:t.x,y:t.y}, col:'#c9bbff', t:performance.now(), dur:400, wob:true}); AUDIO.play('shadow');
+    if (res >= 14) { blog(`${u.name} whispers into ${t.name}'s head. ${t.name} does not listen${SET.dice ? ` (${res} vs 14)` : ''}.`); float(t, 'resists', '#a99a88'); }
+    else { t.stun = true; blog(`${u.name} whispers into ${t.name}'s head, and ${t.name} stops to listen${SET.dice ? ` (${res} vs 14)` : ''}.`); float(t, 'dazed', '#c9bbff'); }
+    await wait(650); return true; } }
+  if (ready('pounce') && !sq.some(p => cheb(u, p) === 1)) { const t = sq.filter(p => cheb(u, p) <= 5 && adjFree(p).length).sort((a, b) => cheb(u, a) - cheb(u, b))[0];
+    if (t) { u.cd.pounce = B.round + 2; const at = adjFree(t).sort((a, b) => cheb(u, a) - cheb(u, b))[0]; sparks(u.x, u.y, 12, '#3a3070', .6); u.facing = t.x >= u.x ? 1 : -1; u.x = at.x; u.y = at.y; AUDIO.play('growl');
+      blog(`<em>${u.name} leaps.</em>`); await wait(250); if (gone()) return true; const r = attack(u, t, {verb:'comes down on', bonus:2}); if (r.hit) later(() => { if (t.hp > 0) { t.prone = true; float(t, 'knocked down', '#cfc8b8'); } }, pace(200)); await wait(650); return true; } }
+  if (ready('shadowstep') && !u.stepped) { const t = t0 && adjFree(t0).length ? t0 : null;
+    if (t && cheb(u, t) > 1) { u.stepped = true; const at = adjFree(t).sort((a, b) => (flanked(u, t, b) ? -1 : 0) - (flanked(u, t, a) ? -1 : 0))[0]; sparks(u.x, u.y, 12, '#9a86e0', .5); u.x = at.x; u.y = at.y; u.facing = t.x >= u.x ? 1 : -1; AUDIO.play('shadow');
+      blog(`${u.name} steps into a shadow and out of another, behind ${t.name}.`); await wait(250); if (gone()) return true; attack(u, t); await wait(650); return true; } }
+  return false;
+}
+/* after its blow, a Rhivi rider or a cutpurse does not stay to be hit back */
+async function foeAfter(u, gone){
+  if (!hasSk(u, 'hitrun') || u.hp <= 0) return;
+  const sq = party(); if (!sq.some(p => cheb(u, p) === 1)) return;
+  let best = null, bd = -1; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = u.x + dx, y = u.y + dy; if ((dx || dy) && free(x, y, u)) { const d = Math.min(...sq.map(p => cheb({x, y}, p))); if (d > bd) { bd = d; best = {x, y}; } } }
+  if (best && bd > 1) { u.x = best.x; u.y = best.y; blog(`${u.name} is gone again before anyone can answer.`); AUDIO.play('step'); await wait(300); }
+}
+
+/* ---- Ohl's other hands: Denul Wash for the many, Stanch for the one who is about to go ---- */
+Object.assign(AB, {
+  wash:{name:'Denul Wash', strain:3, self:true, desc:()=>`${HEALER() ? NAME(HEALER()) : 'The healer'} and every squadmate within 3 heal 2d4+${2 + lvB()}${B && B.warren && B.warren.denul < 1 ? ' (weakened here)' : ''}, and their bleeding stops. Grows with the squad's level. Strain 3.`,
+    run(u){ const d = (B.warren && B.warren.denul) || 1, near = party().filter(p => !p.ally && cheb(p, u) <= 3); AUDIO.play('heal');
+      near.forEach(p => { heal(p, Math.max(1, Math.round(roll(2,4,2 + lvB()) * d))); p.bleed = 0; putOut(p); sparks(p.x, p.y, 10, '#9fe0b8', .35); });
+      blog(`${u.name} opens ${u.id === 'ohl' ? 'his' : 'her'} hands and lets Denul out like water from a cup. ${near.length > 1 ? 'Everyone close enough feels it.' : `There is nobody close enough but ${u.id === 'ohl' ? 'him' : 'her'}.`}${d < 1 ? ' It comes thin here.' : ''}`); }},
+  stanch:{name:'Stanch', strain:2, desc:()=>'A squadmate within 3 cannot drop below 1 health until the healer\'s next turn, stops bleeding, and heals 1 for each squad level past the first. Strain 2.',
+    tiles:u=>party().filter(p => !p.ally && cheb(u, p) <= 3 && p.stanch !== u && sees(u, p)),
+    run(u,x,y){ const t = unitAt(x,y); if (!t) return; t.stanch = u; t.bleed = 0; if (lvB()) healW(t, lvB()); if (has(u.id, 'fieldsurgeon')) { t.hot = {n:2 + Math.floor(lvB() / 4), left:3}; blog(`${u.name} packs the wound and binds it. It will hold, and it will mend.`); } /* v13.5: Field Surgeon */ AUDIO.play('heal'); float(t, 'stanched', '#9fe0b8'); sparks(t.x, t.y, 8, '#9fe0b8', .3);
+      blog(`${u.name} puts two fingers on ${t === u ? 'his own' : `${t.name}'s`} wound and says something to Hood in Ehrlii. ${t === u ? 'He' : t.name} is not going anywhere until he says so.`); }},
+});
+
+/* ---- Bridgeburner: wounds carry from fight to fight until the squad rests (a new chapter, or a rest the story gives) ---- */
+function carryWounds(){
+  if (!DIFF().carry || !B) return;
+  const ohl = B.units.find(u => u.id === HEALER() && u.side === 'p' && !u.ally && u.hp > 0), k = ohl ? .2 : .1; S.wounds = {};
+  B.units.filter(u => u.side === 'p' && !u.ally && SQUAD().includes(u.id)).forEach(u => { const base = u.hp > 0 ? u.hp : Math.round(u.maxhp * .25), mend = Math.round((u.maxhp - base) * .25); /* Q2 (David, Oct 27): a quarter of what was lost mends with the win */ S.wounds[u.id] = Math.min(u.maxhp, base + mend + Math.round(u.maxhp * k)); S.wounds[u.id + '_max'] = u.maxhp; });
+  const hurtN = SQUAD().filter(id => S.wounds[id] < S.wounds[id + '_max']).length;
+  if (hurtN) note(`Bridgeburner: ${ohl ? `${ohl.name} patches what ${ohl.id === 'ohl' ? 'he' : 'she'} can` : 'the squad binds its own cuts'}; a win mends a quarter of the rest, and what's left they carry into the next fight until they rest.`, 'bad');
+}
+function rest(t){ injuryClear(); /* v10.2: any rest sees to a wound too */ if (S && S.wounds) { S.wounds = null; note(t || 'The Fourth rests. Wounds close, mostly.', 'good'); } }
+const woundOf = id => S && S.wounds && S.wounds[id] != null ? S.wounds[id] : null;
+/* a salve out of the fight, from the pack: only matters when wounds carry */
+function salveOut(id){ if (!S.wounds || !(S.inv.salve > 0) || S.wounds[id] == null) return; S.inv.salve--; tally('thrown_salve');
+  S.wounds[id] = Math.min(S.wounds[id + '_max'] || 999, S.wounds[id] + 8); AUDIO.play('heal'); save(); }
+
+/* ---- a jar of salve among what the dead leave, once a chapter from Chapter Two ---- */
+function lootSalve(){ const n = S.chapter || 0; if (n < 2 || S.f['salveLoot' + n]) return; S.f['salveLoot' + n] = 1; S.inv.salve = (S.inv.salve || 0) + 1; note('Among what they left behind: a jar of salve. +1 salve.', 'good'); }
+
+/* ---- when the whole squad goes down: a god answers for the most loyal of them, once a chapter each (on Story, always) ---- */
+const PATRONS = {
+  brisk:{god:'Hood', title:'Hood, Lord of Death', txt:id => `Somewhere there is a gate the size of the world, and a grey hand resting on it.\n\nBrisk, on her back in the dirt, lifts two fingers to her brow the way she always has, to no one in particular. She has never prayed. She has always saluted. The gate does not close. It only does not open any wider.\n\n*Not her. Not yet. Not the ones she is lying across.*`},
+  kettle:{god:'Oponn', title:'Oponn, the Twins', txt:id => `A coin rolls out of Kettle's satchel. Nobody put a coin in Kettle's satchel. It spins on its edge in the dirt for much longer than a coin should, and everyone who is still awake watches it, and it falls the right way.\n\nThe Lady pulls. Somewhere, back to back with her, her brother is already counting what it will cost.`},
+  tuft:{god:'Shadowthrone', title:'Shadowthrone, King of High House Shadow', txt:id => `The dark at the edge of the field takes the shape of a Hound and lies down across Tuft's legs, heavy and warm as a dog by a fire. The cards in her sleeve go cold all at once.\n\nHigh House Shadow does not do favours. It keeps accounts. Tuft, when she can talk again, says it was polite.`},
+  ohl:{god:'Soliel', title:'Soliel, Mistress of Healing', txt:id => `Ohl, face down, says something in Ehrlii, and for once it is not an argument with Hood. It is a prayer, and it is to a woman.\n\nThe air smells of temple oil from a city two thousand leagues away, and the bleeding stops. Soliel, Mistress of Healing, does not often answer soldiers. Ohl has been asking for twenty-two years.`},
+  ellis:{god:'Cotillion', title:'Cotillion, the Rope', txt:id => `Ellis's gloved hand closes on a cord that is not there, and it holds her weight. And the next one's. And the next.\n\nThe Patron of Assassins has a fondness for people who know how to fall, and Ellis has been falling the right way since a dock in Genabaris.`},
+  vell:{god:'Cotillion', title:'Cotillion, the Rope', sig:'ellis', txt:id => `The line on Vell's shoulder goes taut on its own, and something on the other end of it, very high up, takes his weight. And everyone else's.\n\nEvery rope boy in Darujhistan says a word to the Rope before he goes over a parapet. Vell has said his ten thousand times. Tonight, for the first time, somebody was listening.`},
+  sgt:{god:'Fener', title:'Fener, the Boar of Summer', txt:id => `Something huge and hot goes past in the dark, smelling of summer and blood, and the ground shakes the way it shakes under a charge.\n\nFener, the Boar of Summer, is the god soldiers swear by when they are too tired to swear by anything else. He likes a fight that is not finished. This one is not finished.`},
+};
+/* who answers next: the squad's own gods, most loyal first (only for those whose loyalty is above nothing), then the soldiers' god */
+function patronNext(){
+  const ch = S.chapter || 0; if (!S.gods || S.gods.ch !== ch) S.gods = {ch, used:[]};
+  const mates = SQUAD().filter(id => id !== 'sgt' && PATRONS[id] && (S.loy[id] || 0) > 0).sort((a, b) => (S.loy[b] || 0) - (S.loy[a] || 0) || SQUAD().indexOf(a) - SQUAD().indexOf(b));
+  const order = [...mates, 'sgt'];
+  if (DIFF() === DIFFS.story) { const free = order.filter(id => !S.gods.used.includes(id)); if (!free.length) S.gods.used = []; return free[0] || order[0]; }
+  return order.find(id => !S.gods.used.includes(id)) || null;
+}
+/* no god left this chapter: back to the chapter's start, on the same save */
+function chapterAgain(){
+  const n = S.chapter || 0, keep = {stats:S.stats, sid:S.sid, name:S.name, diff:S.diff, chsnap:S.chsnap, deeds:S.deeds};
+  let s;
+  if (n === 0) s = newState(S.name);
+  else if (S.chsnap && S.chsnap[n]) s = JSON.parse(JSON.stringify(S.chsnap[n]));
+  else s = rebuildAt(S, n);
+  Object.assign(s, keep); s.gods = {ch:n, used:[]}; s.boons = null; S = migrate(s); S.scene = 'chintro'; save(); B = null; $('#sheet').hidden = true;
+  if (n === 0) showIntro(); else startChapter(n);
+}
+
+/* ---- v6.9 the gods' boons: every answer leaves a boon on the fight, by god, so the fight you rise into is not the one you lost.
+   They stack when more than one god answers (at most two on Story, the newest kept), and last the fight and its second area.
+   S.boons = {fight, gods:[keys], spared:{id}} is set on the retry (031_battle.js lose) and cleared when the fight is won. ---- */
+const BOONS = {
+  'Hood':               {key:'hood',   name:'The gate stays shut',   txt:'The first time each squadmate would go down, they stay up at 1 health.'},
+  'Oponn':              {key:'oponn',  name:'The Lady pulls',        txt:'+2 to hit, and each squadmate rolls twice and keeps the better on their first attack each round.'},
+  'Shadowthrone':       {key:'shadow', name:'Shadow wraps the squad', txt:'Enemies are −2 to hit, and nobody in the squad can be flanked.'},
+  'Soliel':             {key:'soliel', name:'Temple oil',            txt:'Every squadmate heals 3 at the start of their turn, and bleeding stops.'},
+  'Cotillion':          {key:'rope',   name:'The Rope',              txt:'+2 move, and stepping away draws no free swings.'},
+  'Fener':              {key:'boar',   name:'The Boar charges',      txt:'+3 damage on every hit.'},
+  'Treach':             {key:'tiger',  name:'The Tiger',             txt:'+2 damage, and +2 to hit on any enemy a squadmate is already standing next to.'},
+  'the spirits':        {key:'cold',   name:'The ground goes cold',  txt:'An enemy that starts its turn next to a squadmate moves at half pace and is −1 to hit.'},
+  'the Queen of Dreams':{key:'dream',  name:'Far away',              txt:'Enemies are −2 to hit, and enemy sorcery does half: the Semk fire burns for half, and a daze is only a stagger.'},
+  'the grandmother':    {key:'ground', name:'The ground gives back', txt:'No spell sputters this fight, and every squadmate heals 2 at the start of their turn.'},
+  'the Rhivi spirits':  {key:'herd',   name:'The herd goes through', txt:'+2 move, and enemy shots are −3 to hit.'},
+  'Togg and Fanderay':  {key:'wolves', name:'The Wolves of Winter',  txt:'+1 armour, and an enemy that starts its turn next to a squadmate takes 1d4 cold.'},
+  /* v7.0, Book Four (70): Hessa's goddess and Orvas's dead */
+  'D\'rek':             {key:'worm',   name:'The Worm of Autumn',    txt:'An enemy that lands a blow on a squadmate in melee takes 3 rot back.'},
+  'the Khundryl dead':  {key:'tears',  name:'The dead ride',         txt:'+2 move, and each squadmate\'s first hit in a turn does +2 damage.'},
+  /* v8.0, Book Five (80): the sergeant's god, and Perrit's, Thegg's and Brune's. Every piece of them is an effect another boon already has */
+  'the Errant':         {key:'errant', name:'The coin falls your way', txt:'+2 to hit, and enemies are −1 to hit.'},
+  'the Empty Hold':     {key:'hold',   name:'The open hand',         txt:'+1 armour, and every squadmate heals 2 at the start of their turn.'},
+  'the Tarthenal dead': {key:'tarthenal', name:'The old dead stand behind', txt:'+2 damage on every hit, and nobody in the squad can be flanked.'},
+  'the Shore':          {key:'shore',  name:'The tide comes in',     txt:'+2 move, and an enemy that starts its turn next to a squadmate takes 1d4.'},
+};
+const BOON_BY_KEY = Object.fromEntries(Object.entries(BOONS).map(([god, b]) => [b.key, Object.assign({god}, b)]));
+/* the boons on the fight being fought (or about to be): keys, newest last */
+const boonsOn = () => { const f = (B && B.id) || (S && S.battle); return S && S.boons && f && S.boons.fight === f ? (S.boons.gods || []) : []; };
+const boon = k => boonsOn().includes(k);
+const patronBoon = who => { const P = who && PATRONS[who]; return P && BOONS[P.god] ? Object.assign({god:P.god}, BOONS[P.god]) : null; };
+/* grant a god's boon on the fight about to be fought again: dedupe by god, newest last; Story keeps the newest two */
+function boonGrant(fight, b){
+  if (!b) return; const prev = S.boons && S.boons.fight === fight ? (S.boons.gods || []) : [];
+  let gods = prev.filter(k => k !== b.key).concat(b.key);
+  if (DIFF() === DIFFS.story) gods = gods.slice(-2);
+  S.boons = {fight, gods, spared:{}};
+}
+const boonsClear = () => { if (S && S.boons) S.boons = null; };
+/* what a squadmate's turn opens with under the gods */
+function boonTurnStart(u){
+  if (boon('soliel')) { if (u.bleed > 0) { u.bleed = 0; float(u, 'bleeding stops', '#9fe0b8'); } if (u.hp < u.maxhp) { B.healSrc = 'soliel'; heal(u, 3); B.healSrc = null; blog(`<em>Temple oil.</em> ${u.name} heals 3.`); } }
+  if (boon('ground') && u.hp < u.maxhp) { B.healSrc = 'spirits'; heal(u, 2); B.healSrc = null; blog(`<em>The ground gives back.</em> ${u.name} heals 2.`); }
+  if (boon('hold') && u.hp < u.maxhp) { heal(u, 2); blog(`<em>The open hand.</em> ${u.name} heals 2.`); } // v8.0 the Empty Hold
+}
+/* what an enemy's turn opens with: the Wickan cold and the Wolves, for anyone standing next to the squad */
+function boonFoeTurnStart(u){
+  if (u.mvFull != null) { u.mv = u.mvFull; u.mvFull = null; B.mvLeft = u.mv; } // last turn's cold wears off
+  if (u.side !== 'e' || u.hp <= 0) return;
+  const adj = B.units.some(p => p.side === 'p' && p.hp > 0 && cheb(p, u) === 1); if (!adj) return;
+  if (boon('cold')) { u.coldTurn = B.turn; u.mvFull = u.mv; u.mv = Math.ceil(u.mv / 2); B.mvLeft = u.mv; blog(`<em>The ground goes cold under ${u.name}.</em> Half pace, −1 to hit.`); float(u, 'slowed', '#bfe8ff'); }
+  if (boon('wolves')) { const n = roll(1, 4); blog(`<em>The Wolves' breath.</em> ${u.name} takes ${n} cold.`); sparks(u.x, u.y, 8, '#bfe8ff', .5); hurt(u, n); }
+  if (boon('shore') && u.hp > 0) { const n = roll(1, 4); blog(`<em>The tide comes in.</em> ${u.name} takes ${n}.`); sparks(u.x, u.y, 8, '#8ab8c8', .5); hurt(u, n); } // v8.0 the Shore
+}
+/* the chips under the map, and the log line a fight opens with */
+const boonsHTML = () => boonsOn().map(k => BOON_BY_KEY[k]).filter(Boolean).map(b => `<span class="boon" title="${esc(b.txt)}">✦ ${esc(b.god === 'the spirits' ? 'the Wickan spirits' : b.god)}: ${esc(b.name.toLowerCase())}</span>`).join('');
+const boonsLine = () => { const bs = boonsOn().map(k => BOON_BY_KEY[k]).filter(Boolean); return bs.length ? `<em>The gods' boons.</em> ${bs.map(b => `${b.name}: ${b.txt}`).join(' ')}` : ''; };
+
+/* ============ v3.13 tactics: through the squad, Steady, Post up, hold-out takedowns ============ */
+/* the squad passes through its own people (and allies) on the move; enemies block */
+const passFriend = (x, y, u) => !wall(x, y) && !B.units.some(v => v !== u && v.hp > 0 && v.x === x && v.y === y && v.side !== u.side);
+/* a ranged squadmate who has not fired yet this fight is posted up: the first enemy to step into their reach eats a free shot */
+const postedUp = u => !!(B && u && u.side === 'p' && !u.ally && u.hp > 0 && u.rng > 1 && !u.fired && !u.stun);
+async function postUp(e, was){
+  if (!B || B.over || e.hp <= 0) return false;
+  const shooters = party().filter(p => postedUp(p) && cheb(p, e) <= p.rng && cheb(p, was) > p.rng && canShoot(p, e));
+  if (!shooters.length) return false;
+  const p = shooters.sort((a, b) => cheb(a, e) - cheb(b, e))[0];
+  p.facing = e.x >= p.x ? 1 : -1; blog(`<em>${p.name} was posted up for exactly this.</em>`); float(p, 'posted up', '#e8c073');
+  attack(p, e, {verb:'was waiting for'}); updBattleUI(); await wait(420); return true;
+}
+/* hold-out fights: every enemy the Fourth puts down, even one that gets up again or goes home */
+function holdDown(u, knelt){ if (!B || !B.def || !B.def.objective || u.side !== 'e') return; B.holdDowns ??= []; B.holdDowns.push({name:u.name, kind:u.kind, knelt:!!knelt});
+  blog(knelt ? `<em>${u.name} goes down on one knee.</em> It will get up. It went down.` : `<em>${u.name} goes down.</em>`); }
+function holdBonus(){
+  const d = B && B.holdDowns; if (!d || !d.length) return;
+  const n = Math.min(3, d.length), xp = Math.round((B.def.xp || 0) * .4 * n * XPK); gainXP(xp);
+  S.f.holdDowns ??= {}; S.f.holdDowns[B.id] = d.length; S.f.lastHold = {id:B.id, n:d.length, names:d.map(x => x.name), knelt:d.some(x => x.knelt)};
+  const names = [...new Set(d.map(x => x.name))], list = names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0];
+  note(`They were only meant to hold. They put ${d.length > 1 ? `${d.length} down` : 'one down'} as well: ${list}${d.some(x => x.knelt) ? ', on its knees for a moment' : ''}. +${xp} experience.`, 'good');
+  tally('holdDowns', d.length);
+}
+/* the story can say it: did the Fourth put anything down in this hold-out fight? */
+const heldDowns = id => (S && S.f && S.f.holdDowns && S.f.holdDowns[id]) || 0;
+
+/* ============ v3.13 gear: the best hands for each piece ============ */
+const avgDmg = d => d ? d[0] * (d[1] + 1) / 2 + (d[2] || 0) : 0;
+/* how much a piece of gear is worth on this squadmate: armour for the front, range for the ranged, a stat trinket on whoever rolls that stat */
+function gearValue(id, g){
+  const it = ITEMS[g], t = TPL[id]; if (!it || !t || !canWear(id, g)) return -1; // v7.2: by role (38c), not by name
+  const ranged = t.rng > 1, front = ['shield', 'mail'].some(r => rolesOf(id).includes(r)); // the front line: whoever takes a shield or mail (v7.2: Dannet, Orvas, Rasp and the sappers too)
+  let v = (it.ac || 0) * (front ? 3 : 2) + (it.atk || 0) * 2.5 + (it.hp || 0) * (front ? .6 : .45) + (it.mv || 0) * (ranged ? 1.2 : 2) + (it.rng || 0) * (ranged ? 2.5 : .3);
+  if (it.dmg) v += (avgDmg(it.dmg) - avgDmg(t.dmg)) * 1.5;
+  /* v8.1: a check stat the soldier's role leans on (their best Measure, or the one their level grows) outranks a flat +1 */
+  if (it.stat) Object.entries(it.stat).forEach(([k, n]) => { const mine = t.st[k], top = Math.max(...Object.values(t.st)), best = Math.max(...SQUAD().map(o => TPL[o] ? TPL[o].st[k] : 0)), role = mine >= top || (STATUP[id] || []).includes(k);
+    v += n * (role ? 3.2 : mine >= best ? 2.5 : mine >= best - 1 ? 1 : .3); });
+  /* v8.1: a special (14b ITEM_SPECIAL) is worth more than any flat +1, on whoever it works for; one that works from the pack is worth nothing worn */
+  if (itemSpecial(g) && !specialCarried(g) && (!ITEM_SPECIAL_WHO[g] || ITEM_SPECIAL_WHO[g] === id) && (!SPECIAL_SUITS[g] || SPECIAL_SUITS[g](t))) v += 3.5;
+  return v + .01; // anything wearable beats nothing
+}
+/* specials that only do anything for some soldiers: a lens for a shot, a fetish for a caster */
+const SPECIAL_SUITS = {b4_c5_seaglass:t => t.rng > 1, b4_c5_veil:t => t.rng > 1 || !!t.magic, b2_fetish:t => !!t.magic, b3_c4_ropehooks:t => t.rng <= 1};
+/* a new piece goes to whoever it suits best among those with that slot empty */
+function placeGear(g){
+  const it = ITEMS[g]; if (!it) return null;
+  const who = SQUAD().filter(w => canWear(w, g) && S.gear[w] && freeSlot(w, g)).sort((a, b) => gearValue(b, g) - gearValue(a, g))[0];
+  if (who && gearValue(who, g) > 0) { S.gear[who][freeSlot(who, g)] = g; return who; } return null;
+}
+/* a piece nobody wears and nobody at camp is waiting for */
+const gearIdle = () => { const parked = new Set(Object.values(S.parked || {}).flatMap(p => Object.values(p || {}))); return [...new Set(S.kit || [])].filter(g => ITEMS[g] && !wornBy(g) && !parked.has(g)); };
+/* a soldier joining: their empty slots take the best of what lies idle in the pack (v8.1) */
+function fillEmpty(id){ if (!S || !S.gear || !TPL[id]) return 0; S.gear[id] ??= {}; let n = 0;
+  gearIdle().filter(g => canWear(id, g)).sort((a, b) => gearValue(id, b) - gearValue(id, a)).forEach(g => { const k = freeSlot(id, g); if (k && gearValue(id, g) > 0) { S.gear[id][k] = g; n++; } });
+  return n; }
+/* nobody goes into a fight with an empty hand while a weapon they can use is in the pack: an idle one, or one passed along from someone who
+   can take another idle one instead (v8.1) */
+function armUnarmed(){ if (!S || !S.gear) return 0; let n = 0;
+  SQUAD().forEach(w => { if (!TPL[w] || (S.gear[w] ??= {}).weapon) return; const idle = gearIdle().filter(g => ITEMS[g].slot === 'weapon');
+    const mine = idle.filter(g => canWear(w, g)).sort((a, b) => gearValue(w, b) - gearValue(w, a))[0];
+    if (mine) { S.gear[w].weapon = mine; n++; return; }
+    for (const x of SQUAD()) { const g = S.gear[x] && S.gear[x].weapon; if (!g || x === w || !canWear(w, g)) continue; const h = idle.find(h => canWear(x, h)); if (h) { S.gear[x].weapon = h; S.gear[w].weapon = g; n++; return; } } });
+  return n; }
+/* Allocate: everything in the kit, re-dealt for the most good (biggest gains first) */
+function allocateGear(){
+  const kit = [...new Set(S.kit)].filter(g => ITEMS[g]), sq = SQUAD();
+  const before = JSON.stringify(S.gear); sq.forEach(w => { S.gear[w] = {}; });
+  const pairs = []; kit.forEach(g => sq.forEach(w => { const v = gearValue(w, g); if (v > 0) pairs.push({w, g, v}); }));
+  pairs.sort((a, b) => b.v - a.v); const used = new Set();
+  pairs.forEach(({w, g}) => { const k = freeSlot(w, g); if (used.has(g) || !k) return; S.gear[w][k] = g; used.add(g); }); // v8.1: both trinket slots (14b)
+  armUnarmed();
+  save(); return before !== JSON.stringify(S.gear);
+}
+/* the sheet's numbers: what the gear adds, so it can show the base, the bonus and the total */
+function gearBonus(id){ const b = {ac:0, atk:0, hp:0, mv:0, rng:0, might:0, wits:0, guile:0, dmg:null};
+  Object.values((S.gear && S.gear[id]) || {}).forEach(g => { const it = ITEMS[g]; if (!it) return; ['ac','atk','hp','mv','rng'].forEach(k => b[k] += it[k] || 0); if (it.stat) Object.entries(it.stat).forEach(([k, n]) => b[k] += n); if (it.dmg) b.dmg = it.dmg; });
+  return b; }
+
+/* ============ v3.13 sharper openings: what Kettle's opening sharper changed (a battle's preFx(B) and preText) ============ */
+const preUsed = id => !!(S && S.f && S.f.pre && S.f.pre[id]);
+/* helpers for a preFx: more of them come at the noise; a tile changes (a wall comes down, a doorway is blocked); fire; smoke */
+function preWave(round, foes, text){ B.xwaves ??= []; B.xwaves.push({round, foes, text}); }
+/* v7.2.1: a tile a sharper changes is drawn as what it now is. The board is painted before preFx runs, so preTile asks for a repaint
+   (B.retile, done in startBattle once preFx is through), and a blocked tile with a look ('cloth', 'rubble', 'spoil', 'roots', 'timber')
+   is drawn as that heap (B.heaps, drawHeap in 25_tiles) rather than as plain wall, so the player can see what stops them. */
+function preTile(x, y, ch, look){ if (!inB(x, y) || unitAt(x, y)) return; const m = B.def.map.slice(); m[y] = m[y].slice(0, x) + ch + m[y].slice(x + 1); B.def = Object.assign({}, B.def, {map:m});
+  B.heaps = (B.heaps || []).filter(h => h.x !== x || h.y !== y); if (ch === '#' && look && !dropStyle()) B.heaps.push({x, y, look}); B.retile = true; }
+function preFire(x, y, rounds = 2, txt){ if (!wall(x, y)) B.fires.push({x, y, until:(B.round || 0) + rounds, txt}); }
+function preSmoke(x, y, rounds = 2){ if (!solid(x, y)) B.smoke.push({x, y, until:(B.round || 0) + rounds, g:'pre'}); }
+function preFoe(kind, x, y){ const at = freeNear(x, y); if (!at || !FOES[kind]) return null; const u = mkFoe(kind, at.x, at.y); u.ini = d20() + (u.init || 0); u.arrived = performance.now(); B.units.push(u); B.initOrder.push(u); return u; }

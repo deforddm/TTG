@@ -1,0 +1,383 @@
+// Playthrough bot for Ashes of the Pale: drives the real UI from the title screen through the
+// prologue, all seven chapters and the finale, picking choices at random (preferring unseen nodes),
+// walking to NPCs and trigger tiles, and fighting battles with the enemy AI on the squad's side.
+// Usage: node tools/play.mjs [runs=3] [--cheat] [--from=N] [--shots=dir] [--quiet] [--wide] [--book=dg]
+//   --book=dg   pick Book Two (Deadhouse Gates) on the new-sergeant form; the run ends at its last written chapter's end screen
+//   --book=moi  pick Book Three (Memories of Ice) the same way; with no Book Three chapter written yet the run is skipped cleanly (exit 0)
+//   --book=hoc  pick Book Four (House of Chains) the same way; with no Book Four chapter written yet the run is skipped cleanly (exit 0)
+//   --book=mt   pick Book Five (Midnight Tides) the same way; with no Book Five chapter written yet the run is skipped cleanly (exit 0)
+//   --book=bh   pick Book Six (The Bonehunters) the same way (the form's second name is filled by default); skipped cleanly with no chapter yet
+//   --book=rg   pick Book Seven (Reaper's Gale) the same way (two squads, as Book Six); skipped cleanly with no chapter yet
+//   --cheat     win every battle instantly (flow testing only)
+//   --from=N    start from a synthetic save at the start of chapter N (with --book=dg, Book Two's chapter N: SYNTH_DG; with --book=moi, SYNTH_MOI)
+//   --shots=dir screenshot on every new view/area and on any problem
+//   --wide      play in a 1366x768 window (the wide, PC layout) instead of a phone
+// Exit code 1 if any run hit a page error, a stuck state, or failed to reach the end.
+import fs from 'fs';
+import path from 'path';
+import { server, browser as launch, openGame, root } from './page.mjs';
+const args = process.argv.slice(2);
+const runs = +(args.find(a => /^\d+$/.test(a)) || 3);
+const cheat = args.includes('--cheat');
+const quiet = args.includes('--quiet');
+const wide = args.includes('--wide');
+const book = (args.find(a => a.startsWith('--book=')) || '').split('=')[1] || 'gotm';
+const from = +((args.find(a => a.startsWith('--from=')) || '').split('=')[1] || 0);
+const shots = (args.find(a => a.startsWith('--shots=')) || '').split('=')[1] || '';
+if (shots) fs.mkdirSync(shots, { recursive: true });
+
+const srv = await server();
+const browser = await launch();
+
+const BOT = () => {
+  window.__bot = {
+    visited: {}, hist: [], book: 'gotm', nodeVisits: 0, choices: 0, battles: [], cur: null, events: [], tapFails: 0, targets: {}, cheat: false, lastView: '',
+    ev(m) { this.events.push(`[ch${S ? S.chapter : '-'} ${view}${S && S.node ? ' ' + S.node : ''}] ${m}`); },
+    sig() { return [$('#mg').hidden ? '' : (($('#mgPanel') || {}).textContent || ''), view, S && S.node, S && S.area, S && S.pos && S.pos.x, S && S.pos && S.pos.y, B && B.round, B && B.idx, B && B.units.map(u => u.hp + ':' + u.x + u.y).join(''), !$('#sheet').hidden, ($('#sheet').textContent || '').length, !$('#modal').hidden, S && S.finPage].join('|'); },
+    tick() {
+      const sh = $('#sheet'), m = $('#modal');
+      if (!$('#mg').hidden) { const bs = [...$('#mg').querySelectorAll('[data-bot]:not([disabled])')], stay = bs.filter(b => b.id !== 'mgLeave'); if (!stay.length && !$('#chCheck')) { this.mgWait = (this.mgWait || 0) + 1; const lv = $('#mgLeave'); if (this.mgWait > 120 && lv && !lv.disabled) { this.mgWait = 0; this.ev('mg: nothing left it can play (no stake it can afford), left the table'); lv.click(); return 'mg-leave'; } return 'mg-wait'; } this.mgWait = 0; const pool = stay.length && Math.random() < .95 ? stay : bs; if (pool.length) { pool[Math.floor(Math.random() * pool.length)].click(); return 'mg'; } return 'mg-wait'; } // a game at the table: mostly play it out, now and then walk away
+      if (!$('#chars').hidden) { closeChars(); return 'chars'; }
+      if (!$('#settings').hidden) { $('#settings').hidden = true; return 'settings'; }
+      if (!m.hidden) {
+        const pick = m.querySelector('#bPick');
+        if (pick) { const g = {}; m.querySelectorAll('[data-k]').forEach(b => (g[b.dataset.id] ||= []).push(b)); Object.values(g).forEach(a => a[Math.floor(Math.random() * a.length)].click()); if (!pick.disabled) pick.click(); return 'picks'; }
+        m.hidden = true; return 'modal';
+      }
+      const dice = $('#dice'); if (dice) { const pull = $('#dPull'); if (pull && Math.random() < .5) { this.ev('pull: spun the coin'); pull.click(); return 'dice-pull'; } dice.click(); return 'dice'; }
+      if (!$('#cardfx').hidden) { const fold = $('#cfFold'); if (fold && Math.random() < .5) { this.ev('fold: drew again'); fold.click(); return 'cardfx-fold'; } const keep = $('#cfKeep'); if (keep && Math.random() < .5) { keep.click(); return 'cardfx-keep'; } const b = $('#cardfx').querySelector('button:not([disabled])'); if (b) { b.click(); return 'cardfx-btn'; } $('#cardfx').click(); return 'cardfx'; }
+      if (view === 'title') { const sh = $(`[data-shelf="${this.book}"]`); if (sh) { sh.click(); return 'shelf'; } const bk = $(`.bseg [data-book="${this.book}"]`); if (bk && !bk.classList.contains('on')) { bk.click(); return 'book'; } const b = $('#bNew') || $('#bNewSgt'); if (b) { b.click(); return 'new'; } }
+      if (!sh.hidden) {
+        const on = $('#bOn'); if (on) { this.ev('stage: push on'); on.click(); return 'push-on'; } // a fight's second area
+        const retry = $('#bRetry');
+        if (retry) { const b = this.cur; if (b) { b.losses++; this.ev(`lost battle ${b.id} (attempt ${b.losses})`); } retry.click(); return 'retry'; }
+        const pk = sh.querySelector('.choices.picker'); // who handles a check: mostly the likeliest, sometimes anyone
+        if (pk) { const ws = [...pk.querySelectorAll('[data-who]:not([disabled])')]; if (ws.length) { const w = Math.random() < .6 ? (pk.querySelector('.best') || ws[0]) : ws[Math.floor(Math.random() * ws.length)]; this.choices++; w.click(); return 'pick-roller'; } }
+        const btns = [...sh.querySelectorAll('.choice')].filter(b => !b.disabled && b.dataset.i != null);
+        if (!btns.length) return 'wait-choice';
+        const id = S.node; if (id && !this.visited[id]) { this.visited[id] = 1; this.nodeVisits++; }
+        const opts = btns.map(b => { const c = curCh[+b.dataset.i]; let w = 1;
+          if (typeof c.go === 'string') w = this.visited[c.go] ? 1 : 6;
+          else if (typeof c.go === 'function') w = 3;
+          else w = 0.6; // leave / close
+          if (c.check) w *= 1.2;
+          if (c.deck) w = 60; // a Book Two reading (47c): the bot nearly always sits down for it, so the card screen and its effects get played
+          return { b, w }; });
+        let r = Math.random() * opts.reduce((a, o) => a + o.w, 0); const o = opts.find(o => (r -= o.w) <= 0) || opts[0];
+        this.hist.push(`${S.node} [${view}${G.sceneKind ? ':' + G.sceneKind : ''}] -> ${o.b.textContent.slice(0, 50)}`); this.hist = this.hist.slice(-8);
+        const oc = curCh[+o.b.dataset.i]; if (oc && oc.deck && /draw\.$/.test(o.b.textContent)) this.ev(`deck: ${o.b.textContent} (${S.node})`);
+        this.choices++; o.b.click(); return 'choice';
+      }
+      if (view === 'intro') { const g = $('#bGo'); if (g && !g.disabled) { g.click(); return 'intro-go'; } return 'intro-wait'; }
+      if (view === 'end') { const n = $('#bNext') || $('#bEpi'); if (n) { n.click(); return 'next-chapter'; } return 'END'; }
+      if (view === 'finale') { const n = $('#fNext'); if (n) { n.click(); return 'finale-next'; } return 'END'; }
+      if (view === 'battle') {
+        if (!B) return 'battle-none';
+        if (B.id !== (this.cur && this.cur.id) || B !== this.cur._B) { this.cur = { id: B.id, losses: (this.cur && this.cur.id === B.id) ? this.cur.losses : 0, rounds: 0, _B: B, start: performance.now() }; this.battles.push(this.cur); }
+        this.cur.rounds = B.round;
+        if (B.over) return 'battle-over';
+        if (B.busy || !B.cur || B.cur.side !== 'p' || B.cur.ally || !sh.hidden) return 'battle-wait';
+        if (this.cheat || this.cur.losses >= 2 || B.round > 25) {
+          this.cur.cheated = true; B.units.filter(u => u.side === 'e').forEach(u => u.hp = 0); B.round = 99; B.busy = true; checkEnd(); return 'battle-cheat';
+        }
+        // squad turn: use the enemy AI's own logic for the squadmate (move, flank, attack)
+        B.busy = true; ai(B.cur, B.turn); return 'battle-ai';
+      }
+      if (view === 'explore') {
+        if (walking) return 'walking';
+        const a = AREA();
+        const cands = [];
+        (a.npcs || []).filter(n => !n.show || n.show()).forEach(n => { const k = a.id + ':' + n.id; const f = n.fresh ? n.fresh() : false; cands.push({ k, x: n.x, y: n.y, w: (f ? 8 : 1) / (1 + (this.targets[k] || 0)) }); });
+        Object.keys(a.triggers || {}).forEach(ch => a.map.forEach((row, y) => [...row].forEach((c, x) => { if (c === ch) { const k = a.id + ':t' + ch; cands.push({ k, x, y, w: 3 / (1 + (this.targets[k] || 0) * .5) }); } })));
+        if (!cands.length) { this.ev('explore: no targets'); return 'explore-empty'; }
+        let r = Math.random() * cands.reduce((s, c) => s + c.w, 0); const c = cands.find(c => (r -= c.w) <= 0) || cands[0];
+        this.targets[c.k] = (this.targets[c.k] || 0) + 1;
+        const before = JSON.stringify(S.pos); exploreTap(c.x, c.y);
+        if (!walking && $('#sheet').hidden && JSON.stringify(S.pos) === before) { this.tapFails++; if (this.tapFails % 25 === 0) this.ev(`explore: tap on ${c.k} at ${c.x},${c.y} did nothing (${this.tapFails})`); }
+        return 'explore-tap';
+      }
+      if (view === 'scene' && sh.hidden) return 'STUCK-scene-no-sheet';
+      return 'idle-' + view;
+    },
+  };
+};
+
+// build a synthetic save at the start of chapter n (for --from)
+const SYNTH = (n) => {
+  S = newState('Hask'); S.lvl = Math.min(8, 1 + n); S.xp = LEVELS[S.lvl - 1]; S.chapters = { 0: 'given' };
+  const keys = { 1: 'line', 2: 'light', 3: 'report', 4: 'shield', 5: 'hold', 6: 'x' };
+  for (let i = 1; i < n; i++) S.chapters[i] = keys[i];
+  if (n >= 3) S.squad.push('ellis'); migrate(S);
+  S.picksDue = []; if (S.lvl >= 3) { S.squad.forEach(id => { const o = PICKS[3][id]; if (o) S.picks[id].push(o[0][0]); }); }
+  if (S.lvl >= 5) S.squad.forEach(id => S.picks[id].push('iron')); if (S.lvl >= 7) S.squad.forEach(id => S.picks[id].push('keen'));
+  save(); startChapter(n);
+};
+
+// Book Two (--book=dg --from=N): a synthetic save at the start of Book Two's chapter N, with the earlier chapters' keys and the flags
+// later chapters read drawn at random (the Silanda or a kept wound, Ramin or not, Ilhar's skin, Sathi's standing with the Weasels...)
+const SYNTH_DG = (n) => {
+  const pick = a => a[Math.floor(Math.random() * a.length)], coin = () => Math.random() < .5;
+  setBook('dg'); S = newStateDG('Hask'); S.lvl = {1:1, 2:3, 3:4, 4:5, 5:6, 6:7, 7:7}[n] || 7; S.xp = LEVELS[S.lvl - 1];
+  const keys = {1:['b2_key', ['daughters', 'carts']], 2:['b2_c2_key', ['spring', 'water']], 3:['b2_c3_key', ['bait', 'pull']], 4:['b2_c4_key', ['silanda', 'keep']], 5:['b2_c5_key', ['squad', 'column']], 6:['b2_c6_key', ['whole', 'some', 'many']]};
+  S.chapters = {}; for (let i = 1; i < n; i++) { const [f, v] = keys[i]; S.f[f] = pick(v); S.chapters[i] = S.f[f]; }
+  const f = S.f;
+  if (n > 2) { const r = Math.random(); // one recruit at a time (v5.2): Ramin, Keth, or neither; the other walks near, or was sent away
+    if (r < .4) { f.b2_raminDone = 1; S.squad.push('redblade'); S.loy.redblade = 0; f.b2_kethDone = pick([0, 2]); }
+    else if (r < .8) { f.b2_kethDone = 1; S.squad.push('warlock'); S.loy.warlock = 0; f.b2_raminDone = pick([0, 2]); }
+    else { f.b2_raminDone = 0; f.b2_kethDone = pick([0, 2]); } }
+  if (n > 1) { f.b2_ilharHeard = 1; f.b2_prisonerFate = pick(['free', 'column', 'wickans']); f.b2_yedda = coin() ? 1 : 0; f.b2_bungle5 = pick(['gave', 'kept', 'met']); }
+  if (n > 3) { f.b2_sathiTeeth = coin() ? 1 : 0; if (f.b2_c3_key === 'bait') f.b2_weaselHonour = 1; else f.b2_sathiShamed = 1; f.b2_duikerTold3 = coin() ? 1 : 0; }
+  if (n > 4) { f.b2_ilharSeen = 1; f.b2_ilharSign = pick(['silent', 'named']); f.b2_robe = pick(['mincer', 'squad', 'none']); f.b2_marrowEnd = pick(['on', 'stopped']); if (f.b2_marrowEnd === 'on') f.b2_warrenFloor = 1; f.b2_sathiLaugh = coin() ? 1 : 0;
+    const mates = ['haddat', 'sathi', 'tangle', 'marrow'];
+    if (f.b2_c4_key === 'silanda') { const w = pick(mates); f.b2_silandaWho = w; f.b2_silandaGear = {}; S.squad = S.squad.filter(k => k !== w); } else f.b2_woundWho = pick(mates); }
+  if (n > 5) { f.b2_list7 = 1; f.b2_bottle = 1; f.b2_trygalle = 1; f.b2_sathiRode = coin() ? 1 : 0; if (S.squad.includes('haddat')) { f.b2_ilharWater = 1; f.b2_ilharSkin = pick(['drunk', 'kept']); if (f.b2_ilharSkin === 'kept') gain('b2_sealskin'); }
+    if (f.b2_key === 'daughters') f.b2_jar = pick(['poured', 'kept']); else { f.b2_jarboy = pick(['took', 'cart']); f.b2_girlsRode = 1; } f.b2_knots = 8; f.b2_sputters = 2; }
+  migrate(S); Object.keys(S.loy).forEach(k => { S.loy[k] = Math.floor(Math.random() * 5) - 1; });
+  S.chain = {water:8, column:20 + Math.floor(Math.random() * 10)}; S.inv = {sharper:1, burner:1, cusser:1, salve:2, smoker:1}; S.silver = 20;
+  if (n > 6) { // the split on the Geleen, as Chapter 6 leaves it: nobody, everybody (sometimes the sergeant alone), or a random few stay with the Fist (47)
+    Object.assign(f, {b2_listWar:1, b2_bottleThrown:1, b2_duiker11:1, b2_kherahn:1, b2_geleen:1, b2_retreat:1, b2_retreatLost:3, b2_silverDone:1, b2_warchief:1, b2_sathiClan:pick(['yes', 'no'])});
+    if (coin()) f.b2_paid = 5; if (S.squad.includes('haddat')) f.b2_ilhar = pick(['came', 'parted', 'fell', 'lost']);
+    const here = ['haddat', 'sathi', 'tangle', 'marrow', 'redblade', 'warlock'].filter(k => S.squad.includes(k)), r = Math.random();
+    const stay = r < .25 ? [] : r < .4 ? here.slice() : here.filter(() => coin());
+    f.b2_split = {}; f.b2_splitHow = {}; here.forEach(k => { f.b2_split[k] = stay.includes(k) ? 'stay' : 'go'; f.b2_splitHow[k] = pick(['own', 'asked', 'talked']); });
+    if (stay.includes('tangle')) { f.b2_satchel6 = pick(['went', 'left']); if (f.b2_satchel6 === 'went') { f.b2_stayInv = {}; ['sharper', 'burner', 'cusser', 'smoker'].forEach(m => { f.b2_stayInv[m] = S.inv[m]; S.inv[m] = 0; }); } }
+    stay.forEach(k => b2StayBehind(k)); stay.forEach(k => gain({haddat:'b2_bluethread', sathi:'b2_whistle', tangle:'b2_bead', marrow:'b2_knotstring', redblade:'b2_sash', warlock:'b2_dogtooth'}[k]));
+    f.b2_stayCount = stay.length; f.b2_c6_key = !stay.length ? 'whole' : stay.length >= 2 && stay.length * 2 >= here.length ? 'many' : 'some'; S.chapters[6] = f.b2_c6_key;
+    if (coin()) { const all = ['brisk', 'kettle', 'tuft', 'ohl', 'ellis', 'vell'], mates = all.filter(() => coin()); if (!mates.length) mates.push(pick(all));
+      S.imported = {from:'Kell', sid:'synth', road:'empire', lvl:8, follow:{}, mates, dead:[], loy:Object.fromEntries(mates.map(k => [k, Math.floor(Math.random() * 7) - 3]))}; }
+  }
+  const all = [...S.squad, ...(n > 6 ? b2Rearguard() : [])]; // the ones who stayed at the split fight the Barrow with their own picks
+  S.picksDue = []; if (S.lvl >= 3) all.forEach(id => { const o = PICKS[3][id]; S.picks[id] ??= []; if (o) S.picks[id].push(o[0][0]); });
+  if (S.lvl >= 5) all.forEach(id => S.picks[id].push('iron')); if (S.lvl >= 7) all.forEach(id => S.picks[id].push('keen'));
+  save(); startChapter(n);
+};
+
+// Book Three (--book=moi --from=N): a synthetic save at the start of Book Three's chapter N, with earlier chapters' keys (S.f.b3_cN_key)
+// drawn at random, level about N+1, trust 6, dread 3, the Domin's warrens from Chapter 3, Sohra with the squad from Chapter 2 and
+// Dannet waiting from Chapter 4; now and then a Book One import with a squadmate lost
+const SYNTH_MOI = (n) => {
+  const pick = a => a[Math.floor(Math.random() * a.length)], coin = () => Math.random() < .5;
+  setBook('moi'); S = newStateMOI('Hask'); S.lvl = Math.min(15, n + 7); /* v6.1: Book Three runs 8..15 */ S.xp = LEVELS[S.lvl - 1];
+  if (coin()) { const dead = pick(['brisk', 'kettle', 'tuft', 'ohl']); S.squad = S.squad.filter(k => k !== dead);
+    S.imported = {from:'Kell', sid:'synth', road:'outlaw', lvl:8, dead:[dead], f:{c7_tav:'alive', c7_letter:'brisk', c7_debt:pick(['paid', 'spent', 'owed']), c6_key:pick(['bridgeburners', 'cellars', 'alley']), list:212}}; }
+  const keys = (typeof B3KEYS !== 'undefined' && B3KEYS) || {}; // a chapter may publish its key values as B3KEYS[n] = ['a', 'b']
+  S.chapters = {}; for (let i = 1; i < n; i++) { const v = pick(keys[i] || ['a', 'b']); S.f[`b3_c${i}_key`] = v; S.chapters[i] = v; }
+  S.ally = {trust:6, dread:3};
+  if (n >= 3) S.f.b3_domin = 1;
+  if (n >= 2) { S.f.b3_sohraDone = 1; if (!S.squad.includes('sohra')) S.squad.push('sohra'); }
+  if (n >= 4) { S.f.b3_dannetDone = 2; if (S.squad.length < 6) { S.f.b3_dannetDone = 1; S.squad.push('greysword'); } }
+  migrate(S); Object.keys(S.loy).forEach(k => { S.loy[k] = Math.floor(Math.random() * 5) - 1; });
+  S.inv = {sharper:2, burner:1, cusser:1, salve:2, smoker:1}; S.silver = 20;
+  S.picksDue = []; if (S.lvl >= 3) S.squad.forEach(id => { const o = PICKS[3][id]; S.picks[id] ??= []; if (o) S.picks[id].push(o[0][0]); });
+  [5,7,9,11,13,15].filter(l => S.lvl >= l).forEach((l, i) => S.squad.forEach(id => { const v = PICKS.vet[i]; if (v && !S.picks[id].includes(v[0])) S.picks[id].push(v[0]); }));
+  save(); startChapter(n);
+};
+
+// Book Four (--book=hoc --from=N): a synthetic save at the start of Book Four's chapter N, with earlier chapters' keys (S.f.b4_cN_key)
+// from B4KEYS, level N+7 (Book Four runs 8..15), Nerve 5, the chapter's Dust, Orvas with the squad from Chapter 3; now and then a Book Two
+// transfer with Marrow lost at the Barrow, Ramin and Keth waiting
+const SYNTH_HOC = (n) => {
+  const pick = a => a[Math.floor(Math.random() * a.length)], coin = () => Math.random() < .5;
+  setBook('hoc'); S = newStateHOC('Hask'); S.lvl = Math.min(15, n + 7); S.xp = LEVELS[S.lvl - 1];
+  if (coin()) { S.imported = {from:'Kell', sid:'synth', road:pick(['guard', 'wickans']), lvl:8, mates:['haddat', 'sathi', 'tangle'], dead:['marrow'], ramin:true, keth:true, f:{b2_c7_key:'guard', b2_hackleBack:1}};
+    S.dead = {marrow:{ch:7, where:'The Barrow', from:'dg'}}; S.squad = ['sgt', 'haddat', 'sathi', 'tangle', 'tallow']; }
+  const keys = (typeof B4KEYS !== 'undefined' && B4KEYS) || {};
+  S.chapters = {}; for (let i = 1; i < n; i++) { const v = pick(keys[i] || ['a', 'b']); S.f[`b4_c${i}_key`] = v; S.chapters[i] = v; }
+  S.nerve = 5;
+  if (n >= 3) { S.f.b4_orvasDone = 1; if (!S.squad.includes('orvas')) S.squad.push('orvas'); }
+  migrate(S); Object.keys(S.loy).forEach(k => { S.loy[k] = Math.floor(Math.random() * 5) - 1; });
+  S.inv = {sharper:2, burner:1, cusser:1, salve:2, smoker:1}; S.silver = 20;
+  S.picksDue = []; if (S.lvl >= 3) S.squad.forEach(id => { const o = PICKS[3][id]; S.picks[id] ??= []; if (o) S.picks[id].push(o[0][0]); });
+  [5,7,9,11,13,15].filter(l => S.lvl >= l).forEach((l, i) => S.squad.forEach(id => { const v = PICKS.vet[i]; if (v && !S.picks[id].includes(v[0])) S.picks[id].push(v[0]); }));
+  save(); startChapter(n);
+};
+
+// Book Five (--book=mt --from=N): a synthetic save at the start of Book Five's chapter N, with earlier chapters' keys (S.f.b5_cN_key)
+// Brune with the squad from Chapter 3, Ruuk waiting from Chapter 4, Pessa waiting from Chapter 6; the disarm, holder and fallen flags
+// Ruuk with the squad from Chapter 3, Brune waiting from Chapter 3, Pessa with the squad from Chapter 5
+const SYNTH_MT = (n) => {
+  const pick = a => a[Math.floor(Math.random() * a.length)], coin = () => Math.random() < .5;
+  setBook('mt'); S = newStateMT('Hask'); S.lvl = Math.min(8, n + 1); S.xp = LEVELS[S.lvl - 1];
+  const keys = (typeof B5KEYS !== 'undefined' && B5KEYS) || {};
+  S.chapters = {}; for (let i = 1; i < n; i++) { const v = pick(keys[i] || ['a', 'b']); S.f[`b5_c${i}_key`] = v; S.chapters[i] = v; }
+  // the brief's recruits (docs/mt-book-brief.md): Brune joins in Chapter 2 and walks; Ruuk joins in Chapter 3 and, with six walking, waits;
+  // Pessa joins in Chapter 5 and waits
+  if (n >= 3) { S.f.b5_bruneDone = 1; if (!S.squad.includes('brune')) S.squad.push('brune'); }
+  if (n >= 4) { S.f.b5_ruukDone = 2; S.camp = [...(S.camp || []), 'ruuk']; }
+  if (n >= 6) { S.f.b5_pessaDone = 2; S.camp = [...(S.camp || []), 'pessa']; }
+  // the flags later chapters read: disarmed after High Fort on hold (Chapter 5), rearmed after it; who holds the paybooks (Chapter 5's key);
+  // who fell at the channel (none, in a synthesised save)
+  if (n === 5 && S.f.b5_c4_key === 'hold') S.f.b5_disarmed = 1;
+  if (n >= 6 && S.f.b5_c4_key === 'hold') S.f.b5_rearmed = 1;
+  if (n >= 6) S.f.b5_holder = S.f.b5_c5_key === 'sign' ? 'house' : 'army';
+  if (n === 7) S.f.b5_c6_fallen = [];
+  [...S.squad, ...(S.camp || [])].forEach(k => { S.loy[k] ??= 0; S.gear[k] ??= {}; S.picks[k] ??= []; });
+  migrate(S); Object.keys(S.loy).forEach(k => { S.loy[k] = Math.floor(Math.random() * 5) - 1; });
+  if (coin()) S.debt.tobet = Math.round(S.debt.tobet * 1.3); if (coin()) S.debt.ammet = Math.round(S.debt.ammet * .4);
+  S.inv = {sharper:0, burner:0, cusser:0, salve:2, smoker:0}; S.silver = 20;
+  S.picksDue = []; if (S.lvl >= 3) S.squad.forEach(id => { const o = PICKS[3][id]; S.picks[id] ??= []; if (o) S.picks[id].push(o[0][0]); });
+  [5,7].filter(l => S.lvl >= l).forEach((l, i) => S.squad.forEach(id => { const v = PICKS.vet[i]; if (v && !S.picks[id].includes(v[0])) S.picks[id].push(v[0]); }));
+  save(); startChapter(n);
+};
+
+// Book Six (--book=bh --from=N): a synthetic save at the start of Book Six's chapter N (docs/bh-book-brief.md): both squads, the levels the
+// brief gives (the Third 12, 13, 15, 16-17 at Chapters 1, 3, 5, 7; the Fourth 12, 13-14, 15 at Chapters 2, 4, 6), earlier keys, the recruits joined
+const SYNTH_BH = (n) => {
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  setBook('bh'); S = newStateBH('Hask', 'Brann'); const keys = (typeof B6KEYS !== 'undefined' && B6KEYS) || {};
+  S.chapters = {}; for (let i = 1; i < n; i++) { const v = pick(keys[i] || ['a', 'b']); S.f[`b6_c${i}_key`] = v; S.chapters[i] = v; }
+  const lvR = {1:12, 2:13, 3:13, 4:15, 5:15, 6:16, 7:16}[n] || 12, lvH = {1:12, 2:12, 3:13, 4:13, 5:14, 6:15, 7:16}[n] || 12;
+  S.lvl = lvR; S.xp = LEVELS[lvR - 1]; S.th.h.lvl = lvH; S.th.h.xp = LEVELS[lvH - 1];
+  if (n >= 2) { S.f.b6_mehetDone = 1; if (!S.squad.includes('mehet')) S.squad.push('mehet'); S.loy.mehet = 0; }
+  if (n >= 3) { S.f.b6_brannocDone = 1; if (!S.th.h.squad.includes('brannoc')) S.th.h.squad.push('brannoc'); S.th.h.loy.brannoc = 0; }
+  if (n >= 5) { S.f.b6_ressaDone = 2; S.th.h.camp = [...(S.th.h.camp || []), 'ressa']; S.f.b6_soliel = 1; }
+  if (n >= 7) S.f.b6_fourthRoad = pick(['highfist', 'hanarara', 'home']);
+  const fill = (o) => { [...o.squad, ...(o.camp || [])].forEach(k => { o.loy[k] ??= 0; o.gear[k] ??= {}; o.picks[k] ??= []; }); o.picksDue = []; };
+  fill(S); fill(S.th.h); migrate(S);
+  const vets = (o) => o.squad.forEach(id => { const t = PICKS[3][id]; if (t && !o.picks[id].some(p => t.some(x => x[0] === p))) o.picks[id].push(t[0][0]);
+    VET_LVLS.filter(l => o.lvl >= l).forEach((l, i) => { const v = PICKS.vet[i]; if (v && !o.picks[id].includes(v[0])) o.picks[id].push(v[0]); }); });
+  vets(S); vets(S.th.h); save(); startChapter(n);
+};
+
+// Book Seven (--book=rg --from=N): a synthetic save at the start of Book Seven's chapter N (docs/rg-book-brief.md): both squads, the levels the
+// brief gives (the Third 16, 17, 18, 19-20 at Chapters 1, 3, 5, 7; the Letherii 8, 9-10, 11 at Chapters 2, 4, 6), earlier keys, the Rising by then, the recruits joined
+const SYNTH_RG = (n) => {
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  setBook('rg'); S = newStateRG('Hask', 'Brann'); const keys = (typeof B7KEYS !== 'undefined' && B7KEYS) || {};
+  S.chapters = {}; for (let i = 1; i < n; i++) { const v = pick(keys[i] || ['a', 'b']); S.f[`b7_c${i}_key`] = v; S.chapters[i] = v; }
+  const lvT = {1:16, 2:17, 3:17, 4:18, 5:18, 6:19, 7:19}[n] || 16, lvL = {1:8, 2:8, 3:9, 4:9, 5:10, 6:10, 7:11}[n] || 8;
+  S.lvl = lvT; S.xp = LEVELS[lvT - 1]; S.th.l.lvl = lvL; S.th.l.xp = LEVELS[lvL - 1];
+  S.b7 = {rise:Math.min(10, 2 + Math.floor(Math.random() * n)), file:Math.floor(Math.random() * Math.max(1, n - 1)), hi:0}; S.b7.hi = S.b7.rise;
+  if (n >= 2) { S.f.b7_dossDone = 1; if (!S.squad.includes('doss')) S.squad.push('doss'); S.loy.doss = 0; }
+  if (n >= 3) { S.f.b7_ilsaDone = 1; if (!S.th.l.squad.includes('ilsa')) S.th.l.squad.push('ilsa'); S.th.l.loy.ilsa = 0; }
+  if (n >= 4) { S.f.b7_wennaDone = 1; if (!S.squad.includes('wenna')) S.squad.push('wenna'); S.loy.wenna = 0; }
+  if (n >= 5) { S.f.b7_sorvanDone = 2; S.th.l.camp = [...(S.th.l.camp || []), 'sorvan']; }
+  if (n >= 7) S.f.b7_lethRoad = pick(B7_LETHROADS);
+  const fill = (o) => { [...o.squad, ...(o.camp || [])].forEach(k => { o.loy[k] ??= 0; o.gear[k] ??= {}; o.picks[k] ??= []; }); o.picksDue = []; };
+  fill(S); fill(S.th.l); migrate(S);
+  const vets = (o) => o.squad.forEach(id => { const t = PICKS[3][id]; if (t && !o.picks[id].some(p => t.some(x => x[0] === p))) o.picks[id].push(t[0][0]);
+    VET_LVLS.filter(l => o.lvl >= l).forEach((l, i) => { const v = PICKS.vet[i]; if (v && !o.picks[id].includes(v[0])) o.picks[id].push(v[0]); }); });
+  vets(S); vets(S.th.l); save(); startChapter(n);
+};
+
+// Book Eight (--book=tth --from=N): a synthetic save at the start of Book Eight's chapter N (docs/tth-book-brief.md): the Fourth at the
+// brief's levels (16, 16, 17, 17, 18, 19, 19), earlier keys, the Contract by then, Vasso from Ch 2 and Edrem from Ch 4
+const SYNTH_TTH = (n) => {
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  setBook('tth'); S = newStateTTH('Hask'); const keys = (typeof B8KEYS !== 'undefined' && B8KEYS) || {};
+  S.chapters = {}; for (let i = 1; i < n; i++) { const v = pick(keys[i] || ['a', 'b']); S.f[`b8_c${i}_key`] = v; S.chapters[i] = v; }
+  const lv = {1:16, 2:16, 3:17, 4:17, 5:18, 6:19, 7:19}[n] || 16; S.lvl = lv; S.xp = LEVELS[lv - 1];
+  S.b8 = {con:Math.max(0, Math.min(10, 3 + Math.floor(Math.random() * 4) - (n > 3 ? 1 : 0))), hi:3, lo:3};
+  if (n >= 2) { S.f.b8_vassoDone = 1; if (!S.squad.includes('vasso')) S.squad.push('vasso'); }
+  if (n >= 4) { S.f.b8_edremDone = 2; S.camp = [...new Set([...(S.camp || []), 'edrem'])]; }
+  if (n >= 4) { S.f.b8_away3 = 1; } if (n >= 5) S.f.b8_away4 = 1;
+  [...S.squad, ...(S.camp || [])].forEach(k => { S.loy[k] ??= 0; S.gear[k] ??= {}; S.picks[k] ??= []; }); S.picksDue = []; migrate(S);
+  S.squad.forEach(id => { const t = PICKS[3][id]; if (t && !S.picks[id].some(p => t.some(x => x[0] === p))) S.picks[id].push(t[0][0]);
+    VET_LVLS.filter(l => S.lvl >= l).forEach((l, i) => { const v = PICKS.vet[i]; if (v && !S.picks[id].includes(v[0])) S.picks[id].push(v[0]); }); });
+  save(); startChapter(n);
+};
+
+// Book Nine (--book=dod --from=N): a synthetic save at the start of Book Nine's chapter N (docs/dod-book-brief.md): both squads in one
+// save, the Third at 19, 19, 20, 20, 21, 21, 22 and the Letherii at 11, 11, 11, 12, 12, 13, 13 across Ch 1-7, earlier keys, rations by
+// then, Witness beats by then, Brask from Ch 2, Brennet from Ch 3, Kaedra waiting from Ch 5, Tegra from Ch 6, the Letherii's road at Ch 7
+const SYNTH_DOD = (n) => {
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  setBook('dod'); S = newStateDOD('Hask', 'Brann'); const keys = (typeof B9KEYS !== 'undefined' && B9KEYS) || {};
+  S.chapters = {}; for (let i = 1; i < n; i++) { const v = pick(keys[i] || ['a', 'b']); S.f[`b9_c${i}_key`] = v; S.chapters[i] = v; }
+  const lvT = {1:19, 2:19, 3:20, 4:20, 5:21, 6:21, 7:22}[n] || 19, lvL = {1:11, 2:11, 3:11, 4:12, 5:12, 6:13, 7:13}[n] || 11;
+  S.lvl = lvT; S.xp = LEVELS[lvT - 1]; S.th.l.lvl = lvL; S.th.l.xp = LEVELS[lvL - 1];
+  S.b9r = {n:Math.max(1, 7 - Math.floor(Math.random() * n)), lo:3, hi:8}; S.th.l.b9r = {n:Math.max(1, 7 - Math.floor(Math.random() * n)), lo:3, hi:8};
+  for (let i = 3; i < n; i++) { S.f['b9_march' + i] = 1; if (B9WIT[i]) S.b9.wit['c' + i] = pick(B9_WITV); }
+  if (n >= 2) { S.f.b9_braskDone = 1; if (!S.squad.includes('brask')) S.squad.push('brask'); S.loy.brask = 0; }
+  if (n >= 3) { S.f.b9_brennetDone = 1; if (!S.th.l.squad.includes('brennet')) S.th.l.squad.push('brennet'); S.th.l.loy.brennet = 0; }
+  if (n >= 5) { S.f.b9_kaedraDone = 2; S.th.l.camp = [...(S.th.l.camp || []), 'kaedra']; }
+  if (n >= 6) { S.f.b9_tegraDone = 1; if (!S.squad.includes('tegra')) S.squad.push('tegra'); S.loy.tegra = 0; }
+  if (n >= 7) S.f.b9_lethRoad = pick(B9_LETHROADS);
+  const fill = (o) => { [...o.squad, ...(o.camp || [])].forEach(k => { o.loy[k] ??= 0; o.gear[k] ??= {}; o.picks[k] ??= []; }); o.picksDue = []; };
+  fill(S); fill(S.th.l); migrate(S);
+  const vets = (o) => o.squad.forEach(id => { const t = PICKS[3][id]; if (t && !o.picks[id].some(p => t.some(x => x[0] === p))) o.picks[id].push(t[0][0]);
+    VET_LVLS.filter(l => o.lvl >= l).forEach((l, i) => { const v = PICKS.vet[i]; if (v && !o.picks[id].includes(v[0])) o.picks[id].push(v[0]); }); });
+  vets(S); vets(S.th.l); save(); startChapter(n);
+};
+
+// Book Ten (--book=tcg --from=N): a synthetic save at the start of Book Ten's chapter N (docs/tcg-book-brief.md): both squads in one save,
+// the Third at 24, 24, 25, 25, 26, 26, 27 and the Letherii at 16, 16, 16, 17, 17, 18, 18 across Ch 1-7, earlier keys, Witness 3-7 by then
+// and the beats, the wear, Pruss from Ch 2, Tirren from Ch 3, the Letherii's ending at Ch 7; canon's roads (adjunct, escort)
+const SYNTH_TCG = (n) => {
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  setBook('tcg'); S = newStateTCG('Hask', 'Brann'); const keys = (typeof B10KEYS !== 'undefined' && B10KEYS) || {};
+  S.chapters = {}; for (let i = 1; i < n; i++) { const v = pick(keys[i] || ['a', 'b']); S.f[`b10_c${i}_key`] = v; S.chapters[i] = v; }
+  const lvT = {1:24, 2:24, 3:25, 4:25, 5:26, 6:26, 7:27}[n] || 24, lvL = {1:16, 2:16, 3:16, 4:17, 5:17, 6:18, 7:18}[n] || 16;
+  S.lvl = lvT; S.xp = LEVELS[lvT - 1]; S.th.l.lvl = lvL; S.th.l.xp = LEVELS[lvL - 1];
+  const w = () => { const v = 3 + Math.floor(Math.random() * 5); return {n:v, lo:Math.min(v, 4), hi:Math.max(v, 6)}; }; S.b10w = w(); S.th.l.b10w = w();
+  for (let i = 1; i < n; i++) { if (B10_WEAR[i]) S.f['b10_wear' + i] = 1; if (B10BEAT[i]) S.b10.beat['c' + i] = pick(B10_BEATV); }
+  if (n >= 2) { S.f.b10_prussDone = 1; if (!S.squad.includes('pruss')) S.squad.push('pruss'); S.loy.pruss = 0; }
+  if (n >= 3) { S.f.b10_tirrenDone = 1; if (!S.th.l.squad.includes('tirren')) S.th.l.squad.push('tirren'); S.th.l.loy.tirren = 0; }
+  if (n >= 7) S.f.b10_lethRoad = pick(B10_LETHROADS);
+  const fill = (o) => { [...o.squad, ...(o.camp || [])].forEach(k => { o.loy[k] ??= 0; o.gear[k] ??= {}; o.picks[k] ??= []; }); o.picksDue = []; };
+  fill(S); fill(S.th.l); migrate(S);
+  const vets = (o) => o.squad.forEach(id => { const t = PICKS[3][id]; if (t && !o.picks[id].some(p => t.some(x => x[0] === p))) o.picks[id].push(t[0][0]);
+    VET_LVLS.filter(l => o.lvl >= l).forEach((l, i) => { const v = PICKS.vet[i]; if (v && !o.picks[id].includes(v[0])) o.picks[id].push(v[0]); }); });
+  vets(S); vets(S.th.l); save(); startChapter(n);
+};
+
+let bad = 0, skipped = 0;
+async function run(i) {
+  const { ctx, page, errors: errs } = await openGame(browser, srv.url, wide ? { fast: true, width: 1366, height: 768, handPicks: true } : { fast: true, handPicks: true }); // the play-through answers the real pick screen
+  page.on('console', m => { if (m.type() === 'warning' && /finale|backdrop leave|unknown/i.test(m.text())) errs.push('warn: ' + m.text()); });
+  await page.evaluate(BOT);
+  if (cheat) await page.evaluate(() => { __bot.cheat = true; });
+  if (book !== 'gotm') await page.evaluate(b => { __bot.book = b; }, book);
+  if (book === 'moi' && !(await page.evaluate(() => Object.keys((BOOKSNAP.moi && BOOKSNAP.moi.ch) || {}).length))) { // nothing to play yet
+    console.log(`run ${i}: SKIP (Book Three has no chapter registered yet)`); skipped++; await ctx.close(); return; }
+  if (book === 'hoc' && !(await page.evaluate(() => Object.keys((BOOKSNAP.hoc && BOOKSNAP.hoc.ch) || {}).length))) { // nothing to play yet
+    console.log(`run ${i}: SKIP (Book Four has no chapter registered yet)`); skipped++; await ctx.close(); return; }
+  if (book === 'mt' && !(await page.evaluate(() => Object.keys((BOOKSNAP.mt && BOOKSNAP.mt.ch) || {}).length))) { // nothing to play yet
+    console.log(`run ${i}: SKIP (Book Five has no chapter registered yet)`); skipped++; await ctx.close(); return; }
+  if (book === 'bh' && !(await page.evaluate(() => Object.keys((BOOKSNAP.bh && BOOKSNAP.bh.ch) || {}).length))) { // nothing to play yet
+    console.log(`run ${i}: SKIP (Book Six has no chapter registered yet)`); skipped++; await ctx.close(); return; }
+  if (book === 'rg' && !(await page.evaluate(() => Object.keys((BOOKSNAP.rg && BOOKSNAP.rg.ch) || {}).length))) { // nothing to play yet
+    console.log(`run ${i}: SKIP (Book Seven has no chapter registered yet)`); skipped++; await ctx.close(); return; }
+  if (book === 'tth' && !(await page.evaluate(() => Object.keys((BOOKSNAP.tth && BOOKSNAP.tth.ch) || {}).length))) { // nothing to play yet
+    console.log(`run ${i}: SKIP (Book Eight has no chapter registered yet)`); skipped++; await ctx.close(); return; }
+  if (book === 'dod' && !(await page.evaluate(() => Object.keys((BOOKSNAP.dod && BOOKSNAP.dod.ch) || {}).length))) { // nothing to play yet
+    console.log(`run ${i}: SKIP (Book Nine has no chapter registered yet)`); skipped++; await ctx.close(); return; }
+  if (book === 'tcg' && !(await page.evaluate(() => Object.keys((BOOKSNAP.tcg && BOOKSNAP.tcg.ch) || {}).length))) { // nothing to play yet
+    console.log(`run ${i}: SKIP (Book Ten has no chapter registered yet)`); skipped++; await ctx.close(); return; }
+  if (from) await page.evaluate(book === 'dg' ? SYNTH_DG : book === 'moi' ? SYNTH_MOI : book === 'hoc' ? SYNTH_HOC : book === 'mt' ? SYNTH_MT : book === 'bh' ? SYNTH_BH : book === 'rg' ? SYNTH_RG : book === 'tth' ? SYNTH_TTH : book === 'dod' ? SYNTH_DOD : book === 'tcg' ? SYNTH_TCG : SYNTH, from);
+  const t0 = Date.now();
+  let last = '', same = 0, status = '', ticks = 0, chapterSeen = -1, areaSeen = '', viewSeen = '', errShot = 0;
+  const problems = [];
+  const shot = async (name) => { if (!shots) return; try { await page.screenshot({ path: path.join(shots, `r${i}_${String(ticks).padStart(6, '0')}_${name}.png`) }); } catch (e) {} };
+  while (true) {
+    ticks++;
+    try { status = await page.evaluate(() => __bot.tick()); } catch (e) { problems.push('tick threw: ' + e.message); break; }
+    const info = await page.evaluate(() => ({ sig: __bot.sig(), ch: S ? S.chapter : -1, lvl: S ? S.lvl : 0, area: S ? S.area : '', view, node: S && S.node }));
+    if (info.ch !== chapterSeen) { chapterSeen = info.ch; if (!quiet) console.log(`run ${i}: chapter ${info.ch} (level ${info.lvl}) at ${((Date.now() - t0) / 1000).toFixed(0)}s`); }
+    if (shots && (info.area + info.view) !== (areaSeen + viewSeen)) { areaSeen = info.area; viewSeen = info.view; await shot(`${info.view}_${info.area}`); }
+    if (errs.length > errShot) { errShot = errs.length; await shot('error'); }
+    if (status === 'END') break;
+    if (status.startsWith('STUCK')) { problems.push(`${status} at node ${info.node} (${info.view}, ch ${info.ch}) after:\n      ` + (await page.evaluate(() => __bot.hist.join('\n      ')))); await shot('stuck'); break; }
+    if (info.sig === last) same++; else { same = 0; last = info.sig; }
+    if (same > 400) { problems.push(`no progress for 400 ticks: status=${status} view=${info.view} node=${info.node} area=${info.area}`); await shot('frozen'); break; }
+    if (Date.now() - t0 > 25 * 60 * 1000) { problems.push(`timeout after 25 min at ch ${info.ch} ${info.view} ${info.node}`); await shot('timeout'); break; }
+    await page.waitForTimeout(status.startsWith('battle-wait') || status === 'walking' ? 25 : status === 'dice' ? 120 : 15);
+  }
+  const rep = await page.evaluate(() => ({ nodes: __bot.nodeVisits, choices: __bot.choices, events: __bot.events, battles: __bot.battles.map(b => ({ id: b.id, rounds: b.rounds, losses: b.losses, cheated: !!b.cheated })), dead: Object.keys(S.dead || {}), squad: S.squad, book: S.book, chain: S.chain, lvl: S.lvl, chapters: S.chapters, key7: S.f.c7_key }));
+  const ok = status === 'END' && !errs.length && !problems.length;
+  if (!ok) bad++;
+  console.log(`\n=== run ${i}: ${ok ? 'OK' : 'PROBLEMS'} in ${((Date.now() - t0) / 1000).toFixed(0)}s · ${rep.nodes} nodes seen · ${rep.choices} choices · level ${rep.lvl} · squad ${rep.squad.join(',')} · dead ${rep.dead.join(',') || 'none'} · road ${JSON.stringify(rep.chapters)}${rep.book && rep.book !== 'gotm' ? ` · book ${rep.book} · chain ${JSON.stringify(rep.chain)}` : ''}`);
+  problems.forEach(p => console.log('  PROBLEM ' + p));
+  [...new Set(errs)].forEach(e => console.log('  PAGE ERROR ' + e));
+  rep.events.forEach(e => console.log('  event ' + e));
+  if (!quiet) console.log('  tables: ' + await page.evaluate(() => JSON.stringify(S.deeds || {}) + ' c1=' + (S.f.c1_bones || '-') + ' c2=' + (S.f.c2_bones || '-') + ' c3bones=' + (S.f.c3_bonesLast || '-') + ' cups=' + (S.f.c3_cupsLast || '-') + ' charges=' + (S.f.c3_charges || '-') + ' roof=' + (S.f.c4_run || '-') + ' masks=' + (S.f.c6_masks ? S.f.c6_masks - 1 : '-')));
+  if (!quiet) console.log('  battles: ' + rep.battles.map(b => `${b.id}(r${b.rounds}${b.losses ? ' L' + b.losses : ''}${b.cheated ? ' cheat' : ''})`).join(' '));
+  fs.appendFileSync(path.join(root, 'tools', '.visited.json'), JSON.stringify(await page.evaluate(() => Object.keys(__bot.visited))) + '\n');
+  await ctx.close();
+}
+const par = Math.min(runs, 4);
+let next = 0;
+await Promise.all(Array.from({ length: par }, async () => { while (next < runs) { const i = next++; await run(i); } }));
+await browser.close(); srv.kill();
+if (skipped) console.log(`${skipped} run${skipped === 1 ? '' : 's'} skipped: Book ${book === 'tcg' ? 'Ten' : book === 'dod' ? 'Nine' : book === 'tth' ? 'Eight' : book === 'rg' ? 'Seven' : book === 'bh' ? 'Six' : book === 'mt' ? 'Five' : book === 'hoc' ? 'Four' : 'Three'} has no chapters yet.`);
+process.exit(bad ? 1 : 0);
