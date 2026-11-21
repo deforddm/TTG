@@ -17,7 +17,7 @@ function backupData(){ if (S) save();
   let seen = null; try { seen = localStorage.getItem(SEENKEY); } catch(e) {}
   return {ftr:1, v:VERSION, at:new Date().toISOString(), sergeants:sgts, settings:typeof SET !== 'undefined' ? SET : null, seen}; }
 const backupText = () => JSON.stringify(backupData());
-const backupName = () => `from-the-ranks-saves-${new Date().toISOString().slice(0, 10)}.json`;
+const backupName = () => `trygalle-run-saves-${new Date().toISOString().slice(0, 10)}.json`;
 function backupFile(){ return new File([backupText()], backupName(), {type:'application/json'}); }
 /* download: a Blob link. On a phone this lands in Downloads (Android) or asks where to put it (iPhone: Files). */
 function downloadBackup(){ try { const f = backupFile(), u = URL.createObjectURL(f), a = document.createElement('a'); a.href = u; a.download = f.name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); markBackup(); return true; } catch(e) { return false; } }

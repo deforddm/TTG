@@ -84,97 +84,107 @@ for i in range(14):
     A(f'<ellipse cx="{x:.0f}" cy="{y:.0f}" rx="{R.uniform(40, 120):.0f}" ry="{R.uniform(4, 10):.0f}" fill="#8b8790" opacity="{R.uniform(.05, .12):.2f}" filter="url(#tsoft)"/>')
 
 # ---- the carriage, heading right toward the tear ----
-CX, CY = 745, 712   # carriage body bottom-left
-def wheel(cx, cy, r, front=False):
-    A(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="#0b0a10" stroke-width="{r * .16:.1f}"/>')
-    A(f'<circle cx="{cx}" cy="{cy}" r="{r + 1.5}" fill="none" stroke="#6a5a44" stroke-opacity=".55" stroke-width="1.4"/>')
-    sp = ''.join(f'<path d="M{cx},{cy} L{cx + math.cos(k * math.pi / 6) * r * .92:.1f},{cy + math.sin(k * math.pi / 6) * r * .92:.1f}" stroke="#0b0a10" stroke-width="{r * .07:.1f}"/>' for k in range(12))
-    A(f'<g class="tt-spin">{sp}<circle cx="{cx}" cy="{cy}" r="{r * .2:.1f}" fill="#0b0a10"/><circle cx="{cx}" cy="{cy}" r="{r * .08:.1f}" fill="#7d6a4c"/></g>')
-A('<g transform="translate(905 612) scale(.8) translate(-745 -712)">')
-# shadow
-A(f'<ellipse cx="{CX + 300}" cy="{CY + 62}" rx="420" ry="16" fill="#000" opacity=".55" filter="url(#tblur)"/>')
-# body: a heavy iron-bound coach, taller at the back, roof rail
-A(f'<path d="M{CX},{CY} L{CX - 6},{CY - 128} L{CX + 14},{CY - 150} L{CX + 236},{CY - 150} L{CX + 262},{CY - 124} L{CX + 268},{CY - 20} L{CX + 250},{CY} Z" fill="#0e0c14"/>')
-# rim light from the tear on the body's leading edge and roof
-A(f'<path d="M{CX + 14},{CY - 150} L{CX + 236},{CY - 150} L{CX + 262},{CY - 124} L{CX + 268},{CY - 20}" stroke="#9fe0c0" stroke-opacity=".55" stroke-width="2.2" fill="none"/>')
-# iron bands and studs
-for k in range(4):
-    x = CX + 30 + k * 62
-    A(f'<path d="M{x},{CY - 146} L{x},{CY - 6}" stroke="#2c2834" stroke-width="5"/>')
-    for j in range(5): A(f'<circle cx="{x}" cy="{CY - 130 + j * 28}" r="2" fill="#6d6070"/>')
-A(f'<path d="M{CX - 4},{CY - 70} L{CX + 266},{CY - 70}" stroke="#2c2834" stroke-width="6"/>')
-# a slit window with a warm light inside
-A(f'<rect x="{CX + 150}" y="{CY - 118}" width="62" height="14" rx="2" fill="#f3b95c" opacity=".85"/>')
-A(f'<rect x="{CX + 150}" y="{CY - 118}" width="62" height="14" rx="2" fill="#ffd58a" opacity=".5" filter="url(#tblur)"/>')
-# the guild sign on the door: a wheel inside a ring
-A(f'<circle cx="{CX + 92}" cy="{CY - 92}" r="15" fill="none" stroke="#b08a4a" stroke-width="2.5" opacity=".8"/><circle cx="{CX + 92}" cy="{CY - 92}" r="6" fill="none" stroke="#b08a4a" stroke-width="2" opacity=".8"/>')
-# undercarriage and wheels
-A(f'<rect x="{CX + 10}" y="{CY - 6}" width="250" height="12" fill="#0b0a10"/>')
-wheel(CX + 52, CY + 18, 44); wheel(CX + 214, CY + 26, 36, True)
-# roof: crates lashed down, a rail
-A(f'<path d="M{CX + 8},{CY - 158} L{CX + 244},{CY - 158}" stroke="#0e0c14" stroke-width="5"/>')
-for x0, w, h in [(CX + 26, 54, 34), (CX + 82, 40, 24), (CX + 84, 30, 20)]:
-    pass
-A(f'<rect x="{CX + 24}" y="{CY - 194}" width="58" height="38" fill="#0e0c14"/><path d="M{CX + 24},{CY - 175} L{CX + 82},{CY - 175}" stroke="#3b3442" stroke-width="2"/>')
-A(f'<rect x="{CX + 86}" y="{CY - 180}" width="40" height="24" fill="#0e0c14"/>')
-# shareholders on the roof: one kneeling with a crossbow aimed back, one standing with a spear, one at the rear hatch
-def figure(x, y, s=1, pose='stand', face=1):
-    f = face
-    if pose == 'stand':
-        A(f'<path d="M{x - 9 * s},{y} L{x - 7 * s},{y - 38 * s} L{x - 11 * s},{y - 64 * s} Q{x},{y - 74 * s} {x + 11 * s},{y - 64 * s} L{x + 7 * s},{y - 38 * s} L{x + 9 * s},{y} Z" fill="#0b0a10"/>')
-        A(f'<circle cx="{x}" cy="{y - 80 * s}" r="{9 * s}" fill="#0b0a10"/>')
-        A(f'<path d="M{x - 13 * s},{y - 70 * s} Q{x - 30 * s},{y - 50 * s} {x - 40 * s},{y - 22 * s}" stroke="#0b0a10" stroke-width="{6 * s}" fill="none"/>')  # cloak flying back
-    elif pose == 'kneel':
-        A(f'<path d="M{x - 14 * s},{y} L{x - 10 * s},{y - 26 * s} L{x - 12 * s},{y - 46 * s} Q{x - 2 * s},{y - 56 * s} {x + 8 * s},{y - 46 * s} L{x + 12 * s},{y - 20 * s} L{x + 22 * s},{y} Z" fill="#0b0a10"/>')
-        A(f'<circle cx="{x - 1 * s}" cy="{y - 61 * s}" r="{8.5 * s}" fill="#0b0a10"/>')
-    return
-figure(CX + 166, CY - 158, 1, 'stand')
-A(f'<path d="M{CX + 174},{CY - 246} L{CX + 182},{CY - 160}" stroke="#0b0a10" stroke-width="3"/><path d="M{CX + 172},{CY - 256} L{CX + 176},{CY - 238} L{CX + 168},{CY - 240}Z" fill="#9fe0c0" opacity=".8"/>')  # spear, its head catching the warren light
-figure(CX + 54, CY - 194, .95, 'kneel')
-A(f'<path d="M{CX + 46},{CY - 246} L{CX - 2},{CY - 236}" stroke="#0b0a10" stroke-width="5"/><path d="M{CX + 2},{CY - 248} L{CX + 4},{CY - 224}" stroke="#0b0a10" stroke-width="3"/>')  # crossbow aimed back
-# the mage's light at the rear hatch: a small cold fire in a hand
-A(f'<circle cx="{CX - 14}" cy="{CY - 96}" r="22" fill="url(#tlamp)" opacity=".0"/>')
-A(f'<circle cx="{CX - 16}" cy="{CY - 100}" r="26" fill="#9ff0d0" opacity=".25" filter="url(#tblur)"/><circle cx="{CX - 16}" cy="{CY - 100}" r="5" fill="#e8fff2"/>')
-# the driver on the bench, whip raised
-A(f'<path d="M{CX + 262},{CY - 96} L{CX + 312},{CY - 96} L{CX + 318},{CY - 84} L{CX + 266},{CY - 80}Z" fill="#0e0c14"/>')
-figure(CX + 292, CY - 94, .9, 'kneel')
-A(f'<path d="M{CX + 300},{CY - 140} Q{CX + 330},{CY - 200} {CX + 380},{CY - 210} Q{CX + 420},{CY - 214} {CX + 450},{CY - 180}" stroke="#0b0a10" stroke-width="2.2" fill="none"/>')
-# lanterns, front and back
-for lx, ly in [(CX + 270, CY - 132), (CX - 6, CY - 138)]:
-    A(f'<g class="tt-lamp"><circle cx="{lx}" cy="{ly}" r="46" fill="url(#tlamp)"/><rect x="{lx - 5}" y="{ly - 8}" width="10" height="15" rx="2" fill="#ffe7a8"/></g>')
+CX, CY = 745, 712   # the body's bottom-left corner; the whole team is drawn here and scaled by the group below
+import subprocess
+GROUND = CY + 64
+A('<g transform="translate(870 612) scale(.8) translate(-745 -712)">')
+A(f'<ellipse cx="{CX + 330}" cy="{GROUND}" rx="470" ry="16" fill="#000" opacity=".55" filter="url(#tblur)"/>')
+A('<defs><linearGradient id="tcoach" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2130"/><stop offset=".55" stop-color="#17121c"/><stop offset="1" stop-color="#0c0a10"/></linearGradient>'
+  '<linearGradient id="ttarp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3a38"/><stop offset="1" stop-color="#1a1918"/></linearGradient></defs>')
+INK = '#0a090e'
+def wheel(cx, cy, r, n=14):
+    A(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{INK}" stroke-width="{r * .18:.1f}"/>')               # the felloe
+    A(f'<circle cx="{cx}" cy="{cy}" r="{r + r * .09:.1f}" fill="none" stroke="#3a3440" stroke-width="{r * .05:.1f}"/>')  # the iron tyre
+    A(f'<path d="M{cx + r * .6:.1f},{cy - r * .9:.1f} A{r * 1.09:.1f},{r * 1.09:.1f} 0 0 1 {cx + r * 1.05:.1f},{cy - r * .2:.1f}" stroke="#9fe0c0" stroke-opacity=".5" stroke-width="2" fill="none"/>')  # warren light on the rim
+    sp = ''.join(f'<path d="M{cx + math.cos(k * 2 * math.pi / n) * r * .2:.1f},{cy + math.sin(k * 2 * math.pi / n) * r * .2:.1f} L{cx + math.cos(k * 2 * math.pi / n) * r * .9:.1f},{cy + math.sin(k * 2 * math.pi / n) * r * .9:.1f}" stroke="{INK}" stroke-width="{r * .085:.1f}" stroke-linecap="round"/>' for k in range(n))
+    A(f'<g class="tt-spin">{sp}<circle cx="{cx}" cy="{cy}" r="{r * .24:.1f}" fill="{INK}"/><circle cx="{cx}" cy="{cy}" r="{r * .1:.1f}" fill="#a08050"/></g>')
+RW, FW = (CX + 62, GROUND - 52, 52), (CX + 236, GROUND - 40, 40)
+# the far-side wheels peeking out, darker
+for (wx, wy, wr) in (RW, FW): A(f'<circle cx="{wx + 14}" cy="{wy - 4}" r="{wr}" fill="none" stroke="#06050a" stroke-width="{wr * .16:.1f}"/>')
+# the perch, the springs over each axle
+A(f'<path d="M{CX + 20},{CY + 10} L{CX + 300},{CY + 6}" stroke="{INK}" stroke-width="9"/>')
+for (wx, wy, wr) in (RW, FW):
+    A(f'<path d="M{wx - 34},{CY + 4} Q{wx},{CY + 26} {wx + 34},{CY + 4}" stroke="{INK}" stroke-width="5" fill="none"/><path d="M{wx - 30},{CY + 4} Q{wx},{CY - 10} {wx + 30},{CY + 4}" stroke="{INK}" stroke-width="4" fill="none"/>')
+    A(f'<path d="M{wx},{CY + 14} L{wx},{wy}" stroke="{INK}" stroke-width="6"/>')
+# the rear boot: a strong box slung behind, chained
+A(f'<path d="M{CX - 46},{CY - 6} L{CX - 50},{CY - 70} L{CX + 4},{CY - 74} L{CX + 4},{CY - 4} Z" fill="url(#tcoach)"/>')
+A(f'<path d="M{CX - 50},{CY - 50} L{CX + 4},{CY - 52} M{CX - 48},{CY - 28} L{CX + 4},{CY - 30}" stroke="#3a3440" stroke-width="3"/>')
+A(f'<path d="M{CX - 48},{CY - 70} Q{CX - 30},{CY - 58} {CX - 20},{CY - 72}" stroke="#6d6070" stroke-width="1.6" fill="none" stroke-dasharray="3 2"/>')
+# the body: a long coach under a barrel roof, the front raked toward the box
+BODY = f'M{CX},{CY} L{CX - 2},{CY - 138} Q{CX + 140},{CY - 178} {CX + 282},{CY - 140} L{CX + 296},{CY - 64} L{CX + 288},{CY} Z'
+A(f'<path d="{BODY}" fill="url(#tcoach)"/>')
+A(f'<path d="M{CX - 2},{CY - 138} Q{CX + 140},{CY - 178} {CX + 282},{CY - 140} L{CX + 296},{CY - 64}" stroke="#9fe0c0" stroke-opacity=".6" stroke-width="2.4" fill="none"/>')  # rim light
+A(f'<path d="M{CX - 2},{CY - 132} Q{CX + 140},{CY - 170} {CX + 282},{CY - 134}" stroke="#4a3e52" stroke-width="3" fill="none"/>')  # the roof's eave
+# panels: three framed panels, brass at the corners
+for (x0, x1) in ((CX + 14, CX + 92), (CX + 104, CX + 186), (CX + 198, CX + 276)):
+    top = CY - 122 - (8 if x0 == CX + 104 else 2)
+    A(f'<rect x="{x0}" y="{top}" width="{x1 - x0}" height="{CY - 18 - top}" rx="3" fill="none" stroke="#3b3244" stroke-width="3"/>')
+    for (bx, by) in ((x0, top), (x1, top), (x0, CY - 18), (x1, CY - 18)): A(f'<circle cx="{bx}" cy="{by}" r="2.6" fill="#a8844c"/>')
+# the door in the middle panel: the guild's seal in brass
+A(f'<circle cx="{CX + 145}" cy="{CY - 62}" r="17" fill="none" stroke="#c9a15a" stroke-width="2.6"/><circle cx="{CX + 145}" cy="{CY - 62}" r="6" fill="#c9a15a"/>')
+for k in range(8): A(f'<path d="M{CX + 145 + math.cos(k * math.pi / 4) * 6:.1f},{CY - 62 + math.sin(k * math.pi / 4) * 6:.1f} L{CX + 145 + math.cos(k * math.pi / 4) * 15:.1f},{CY - 62 + math.sin(k * math.pi / 4) * 15:.1f}" stroke="#c9a15a" stroke-width="1.6"/>')
+A(f'<path d="M{CX + 151},{CY - 82} L{CX + 146},{CY - 66} L{CX + 152},{CY - 63} L{CX + 140},{CY - 42}" stroke="#bff3d8" stroke-width="2" fill="none"/>')
+A(f'<path d="M{CX + 184},{CY - 70} L{CX + 184},{CY - 54}" stroke="#a8844c" stroke-width="3" stroke-linecap="round"/>')  # the handle
+# shuttered windows, lamplight through the slats
+for wx in (CX + 30, CX + 214):
+    A(f'<rect x="{wx}" y="{CY - 112}" width="46" height="34" rx="2" fill="#1a120a"/>')
+    for j in range(4): A(f'<rect x="{wx + 3}" y="{CY - 108 + j * 8}" width="40" height="3" fill="#f3b95c" opacity="{.95 - j * .12:.2f}"/>')
+    A(f'<rect x="{wx}" y="{CY - 112}" width="46" height="34" fill="#ffcf7a" opacity=".35" filter="url(#tblur)"/>')
+# iron straps over the roof's edge and down the sides, studded
+for x in (CX + 98, CX + 192):
+    A(f'<path d="M{x},{CY - 160 if x < CX + 150 else CY - 158} L{x},{CY - 4}" stroke="#2c2834" stroke-width="6"/>')
+    for j in range(6): A(f'<circle cx="{x}" cy="{CY - 140 + j * 24}" r="1.8" fill="#7a6c80"/>')
+A(f'<path d="M{CX - 2},{CY - 12} L{CX + 290},{CY - 12}" stroke="#2c2834" stroke-width="6"/>')
+# the roof: a rail on posts, cargo under a lashed tarp, a chest at the back
+A(f'<path d="M{CX + 10},{CY - 186} L{CX + 270},{CY - 186}" stroke="{INK}" stroke-width="3"/>')
+for x in range(CX + 14, CX + 271, 32): A(f'<path d="M{x},{CY - 186} L{x},{CY - 158 - (140 - abs(x - CX - 140)) * .12:.0f}" stroke="{INK}" stroke-width="2.4"/>')
+A(f'<path d="M{CX + 70},{CY - 168} Q{CX + 74},{CY - 214} {CX + 118},{CY - 216} Q{CX + 160},{CY - 222} {CX + 196},{CY - 204} Q{CX + 214},{CY - 186} {CX + 216},{CY - 168} Z" fill="url(#ttarp)"/>')
+A(f'<path d="M{CX + 96},{CY - 214} L{CX + 92},{CY - 168} M{CX + 140},{CY - 220} L{CX + 140},{CY - 170} M{CX + 184},{CY - 208} L{CX + 190},{CY - 168}" stroke="#7a6a50" stroke-width="1.8"/>')
+A(f'<path d="M{CX + 74},{CY - 200} Q{CX + 140},{CY - 214} {CX + 212},{CY - 188}" stroke="#9fe0c0" stroke-opacity=".35" stroke-width="1.6" fill="none"/>')
+A(f'<rect x="{CX + 14}" y="{CY - 196}" width="44" height="30" fill="{INK}"/><path d="M{CX + 14},{CY - 182} L{CX + 58},{CY - 182}" stroke="#a8844c" stroke-width="1.6"/>')
+# the box: the driver's seat out front, a footboard, the driver hunched over the reins
+A(f'<path d="M{CX + 288},{CY - 70} L{CX + 344},{CY - 76} L{CX + 350},{CY - 62} L{CX + 296},{CY - 52} Z" fill="{INK}"/>')
+A(f'<path d="M{CX + 330},{CY - 60} L{CX + 366},{CY - 24}" stroke="{INK}" stroke-width="5"/><path d="M{CX + 356},{CY - 26} L{CX + 382},{CY - 30}" stroke="{INK}" stroke-width="5"/>')
+A(f'<path d="M{CX + 304},{CY - 74} Q{CX + 302},{CY - 112} {CX + 322},{CY - 120} Q{CX + 340},{CY - 116} {CX + 344},{CY - 96} L{CX + 352},{CY - 74} Z" fill="{INK}"/>')  # body, hunched
+A(f'<circle cx="{CX + 330}" cy="{CY - 130}" r="10" fill="{INK}"/><path d="M{CX + 318},{CY - 134} L{CX + 344},{CY - 140} L{CX + 340},{CY - 132}Z" fill="{INK}"/>')  # head, a hat brim
+A(f'<path d="M{CX + 312},{CY - 112} Q{CX + 290},{CY - 108} {CX + 270},{CY - 92}" stroke="{INK}" stroke-width="7" fill="none" stroke-linecap="round"/>')  # the cloak streaming back
+A(f'<path d="M{CX + 338},{CY - 110} Q{CX + 362},{CY - 170} {CX + 420},{CY - 196} Q{CX + 480},{CY - 210} {CX + 520},{CY - 170}" stroke="{INK}" stroke-width="2.2" fill="none"/>')  # the whip, cracking out over the team
+# lamps on brackets, front and back
+for (lx, ly, bx) in ((CX + 300, CY - 150, CX + 290), (CX - 16, CY - 146, CX - 2)):
+    A(f'<path d="M{bx},{ly + 20} L{lx},{ly + 10}" stroke="{INK}" stroke-width="3"/>')
+    A(f'<g class="tt-lamp"><circle cx="{lx}" cy="{ly}" r="54" fill="url(#tlamp)"/><path d="M{lx - 6},{ly - 10} L{lx + 6},{ly - 10} L{lx + 8},{ly + 8} L{lx - 8},{ly + 8}Z" fill="#ffe7a8"/><path d="M{lx - 8},{ly - 10} L{lx},{ly - 18} L{lx + 8},{ly - 10}" fill="{INK}"/></g>')
+# shareholders on the roof: one kneeling at the back with a crossbow aimed behind, one standing with a spear
+A(f'<path d="M{CX + 22},{CY - 196} L{CX + 26},{CY - 222} L{CX + 22},{CY - 240} Q{CX + 32},{CY - 252} {CX + 44},{CY - 240} L{CX + 46},{CY - 214} L{CX + 58},{CY - 196}Z" fill="{INK}"/><circle cx="{CX + 33}" cy="{CY - 258}" r="9" fill="{INK}"/>')
+A(f'<path d="M{CX + 30},{CY - 240} L{CX - 22},{CY - 232}" stroke="{INK}" stroke-width="5"/><path d="M{CX - 18},{CY - 246} L{CX - 16},{CY - 220}" stroke="{INK}" stroke-width="3"/>')
+A(f'<path d="M{CX + 228},{CY - 166} L{CX + 230},{CY - 206} L{CX + 224},{CY - 236} Q{CX + 236},{CY - 248} {CX + 248},{CY - 236} L{CX + 244},{CY - 206} L{CX + 248},{CY - 166}Z" fill="{INK}"/><circle cx="{CX + 236}" cy="{CY - 254}" r="9.5" fill="{INK}"/>')
+A(f'<path d="M{CX + 224},{CY - 236} Q{CX + 200},{CY - 222} {CX + 186},{CY - 196}" stroke="{INK}" stroke-width="6" fill="none" stroke-linecap="round"/>')
+A(f'<path d="M{CX + 252},{CY - 300} L{CX + 256},{CY - 166}" stroke="{INK}" stroke-width="3"/><path d="M{CX + 250},{CY - 314} L{CX + 256},{CY - 294} L{CX + 246},{CY - 296}Z" fill="#9fe0c0"/>')
+# the mage at the rear hatch: a cold fire held out behind
+A(f'<circle cx="{CX - 62}" cy="{CY - 96}" r="28" fill="#9ff0d0" opacity=".25" filter="url(#tblur)"/><circle cx="{CX - 62}" cy="{CY - 96}" r="5" fill="#e8fff2"/>')
+A(f'<path d="M{CX - 4},{CY - 104} Q{CX - 30},{CY - 108} {CX - 58},{CY - 98}" stroke="{INK}" stroke-width="5" fill="none" stroke-linecap="round"/>')
+# wheels last, over the body's foot
+wheel(*RW); wheel(*FW)
 
-# ---- four horses at a gallop, two pairs, the far pair a little higher and darker ----
-def horse(x, y, s, col, phase):
-    # body
-    A(f'<g fill="{col}">')
-    A(f'<ellipse cx="{x}" cy="{y}" rx="{58 * s:.1f}" ry="{22 * s:.1f}"/>')
-    # neck and head, reaching forward
-    A(f'<path d="M{x + 40 * s},{y - 12 * s} Q{x + 66 * s},{y - 46 * s} {x + 84 * s},{y - 50 * s} L{x + 112 * s},{y - 36 * s} Q{x + 116 * s},{y - 28 * s} {x + 106 * s},{y - 24 * s} L{x + 86 * s},{y - 28 * s} Q{x + 70 * s},{y - 10 * s} {x + 52 * s},{y + 10 * s} Z"/>')
-    A(f'<path d="M{x + 82 * s},{y - 50 * s} L{x + 86 * s},{y - 64 * s} L{x + 92 * s},{y - 50 * s}Z"/>')  # ear
-    # mane streaming back
-    A(f'<path d="M{x + 84 * s},{y - 52 * s} Q{x + 60 * s},{y - 58 * s} {x + 34 * s},{y - 38 * s} Q{x + 58 * s},{y - 44 * s} {x + 70 * s},{y - 36 * s}Z"/>')
-    # tail
-    A(f'<path d="M{x - 54 * s},{y - 8 * s} Q{x - 92 * s},{y - 20 * s} {x - 108 * s},{y + 4 * s} Q{x - 86 * s},{y - 4 * s} {x - 56 * s},{y + 4 * s}Z"/>')
-    A('</g>')
-    # legs: a gallop. phase 0: forelegs reaching, hind legs pushing back
-    legs = [((x + 34 * s, y + 12 * s), (x + 70 * s, y + 30 * s), (x + 92 * s, y + 46 * s)),
-            ((x + 26 * s, y + 14 * s), (x + 46 * s, y + 42 * s), (x + 60 * s, y + 62 * s)),
-            ((x - 38 * s, y + 10 * s), (x - 64 * s, y + 36 * s), (x - 98 * s, y + 48 * s)),
-            ((x - 30 * s, y + 14 * s), (x - 40 * s, y + 44 * s), (x - 58 * s, y + 64 * s))]
-    if phase: legs = [legs[1], legs[0], legs[3], legs[2]]
-    for (a, b, c) in legs:
-        A(f'<path d="M{a[0]:.0f},{a[1]:.0f} Q{b[0]:.0f},{b[1]:.0f} {c[0]:.0f},{c[1]:.0f}" stroke="{col}" stroke-width="{10 * s:.1f}" fill="none" stroke-linecap="round"/>')
-# traces from the coach to the team
-A(f'<path d="M{CX + 268},{CY - 40} L{CX + 470},{CY - 64} M{CX + 268},{CY - 30} L{CX + 610},{CY - 60}" stroke="#0b0a10" stroke-width="3"/>')
-horse(CX + 560, CY - 92, .92, '#120f1a', 1)      # far leader
-horse(CX + 410, CY - 88, .95, '#120f1a', 0)      # far wheeler
-horse(CX + 590, CY - 64, 1.0, '#09080d', 0)      # near leader
-horse(CX + 440, CY - 60, 1.03, '#09080d', 1)     # near wheeler
-# rim light on the near horses' backs
-A(f'<path d="M{CX + 400},{CY - 82} Q{CX + 440},{CY - 88} {CX + 480},{CY - 82} M{CX + 550},{CY - 86} Q{CX + 590},{CY - 92} {CX + 630},{CY - 86}" stroke="#9fe0c0" stroke-opacity=".45" stroke-width="2" fill="none"/>')
+# ---- four horses at a full gallop: From the Ranks' own horse (beastHorse, 017b), drawn through tools/ttg_horse_svg.js ----
+HS = 13  # beastHorse units to picture units: withers about 90 up
+spec = [{'run': 1, 'col': '#100d17', 'mane': '#07060a'}, {'run': 2, 'col': '#100d17', 'mane': '#07060a'},
+        {'run': 2, 'col': INK, 'mane': '#000'}, {'run': 1, 'col': INK, 'mane': '#000'}]
+frag = json.loads(subprocess.check_output(['node', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ttg_horse_svg.js'), json.dumps(spec)]))
+team = [(CX + 452, GROUND - 12, frag[0]), (CX + 640, GROUND - 14, frag[1]),   # the far pair, a step up the road and darker
+        (CX + 436, GROUND, frag[2]), (CX + 626, GROUND, frag[3])]              # the near pair
+# the pole and the traces, behind the near horses
+A(f'<path d="M{CX + 350},{CY - 30} L{CX + 560},{GROUND - 80}" stroke="{INK}" stroke-width="5"/>')
+A(f'<path d="M{CX + 340},{CY - 46} L{CX + 400},{GROUND - 70} M{CX + 490},{GROUND - 76} L{CX + 590},{GROUND - 74}" stroke="{INK}" stroke-width="2.6"/>')
+for i, (hx, hy, svg) in enumerate(team):
+    A(f'<g transform="translate({hx} {hy}) scale({HS})">{svg}</g>')
+    if i >= 2:  # harness on the near horses: collar, breast strap, warren light along the back
+        A(f'<g transform="translate({hx} {hy}) scale({HS})"><path d="M4.4 -8.2 Q5.6 -6.4 5.2 -4.8" stroke="#3a3240" stroke-width=".55" fill="none"/><path d="M-3.6 -8.7 Q-.4 -7.7 2.7 -8.5" stroke="#9fe0c0" stroke-opacity=".55" stroke-width=".22" fill="none"/><path d="M5 -6.4 L-2 -6.2" stroke="#3a3240" stroke-width=".3"/></g>')
+# the reins from the driver's hands to the leaders
+A(f'<path d="M{CX + 350},{CY - 98} Q{CX + 480},{GROUND - 140} {CX + 726},{GROUND - 126}" stroke="{INK}" stroke-width="1.4" fill="none"/>')
+
 # dust kicked up behind the wheels and hooves
 for i in range(16):
-    x, y = CX + R.uniform(-160, 640), CY + R.uniform(20, 60)
+    x, y = CX + R.uniform(-160, 340), CY + R.uniform(40, 66)
     A(f'<ellipse cx="{x:.0f}" cy="{y:.0f}" rx="{R.uniform(20, 60):.0f}" ry="{R.uniform(6, 14):.0f}" fill="#6e6676" opacity="{R.uniform(.06, .16):.2f}" filter="url(#tblur)"/>')
 
 A('</g>')
