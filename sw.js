@@ -1,6 +1,7 @@
-const CACHE = 'ttg-v0.2.0'; // backups: a save file that survives a cleared browser
+const CACHE = 'ttg-v0.2.1'; // backups: a save file that survives a cleared browser
 const FONTS = 'ttg-fonts'; // Google Fonts, kept across versions so the typography survives offline play
-const PAGE = './index.html'; // the 2.5 MB game. Precached once; './' and every navigation are answered from it.
+const PAGE = './'; // the 2.5 MB game, precached at './' (Cloudflare Pages redirects /index.html to /, and a redirected response
+// answering a navigation makes Chrome show ERR_FAILED). './' and './index.html' are answered from it.
 const ASSETS = [PAGE, './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 /* A new version installs and then WAITS. The page shows "Update ready"; tapping it posts 'skip', and only then
    does the new version take over (the page reloads itself on controllerchange). Never skipWaiting on install. */
@@ -10,7 +11,11 @@ const FONT_CSS = 'https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&fa
 const warmFonts = () => caches.open(FONTS).then(c => fetch(FONT_CSS).then(r => { if (!r.ok) return ''; c.put(FONT_CSS, r.clone()); return r.text(); })
   .then(css => { const urls = []; String(css || '').replace(/\/\* latin \*\/[^}]*?url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g, (_, u) => urls.push(u));
     return Promise.all(urls.map(u => c.match(u).then(hit => hit || fetch(u).then(res => res.ok ? c.put(u, res) : null)))); })).catch(() => {});
+/* never hand a navigation a response that was redirected: copy it into a clean one */
+const clean = r => !r || !r.redirected ? r : r.blob().then(b => new Response(b, {status:r.status, statusText:r.statusText, headers:r.headers}));
 self.addEventListener('install', e => {
+  /* the one exception to waiting: if no window of the game is open (v0.2.0 and older could break the page itself), take over now */
+  e.waitUntil(self.clients.matchAll({type:'window'}).then(ws => { if (!ws.length) self.skipWaiting(); }));
   e.waitUntil(Promise.all([caches.open(CACHE).then(c => c.addAll(ASSETS.map(u => new Request(u, {cache:'reload'})))), warmFonts()])); // past the HTTP cache: a new version must not precache the old page
 });
 self.addEventListener('activate', e => {
@@ -36,7 +41,7 @@ self.addEventListener('fetch', e => {
      So a launch downloads nothing. './' and './index.html' (with any query) get the cached page. Anything not precached goes to the
      network, and is kept for offline play if it loads. */
   const home = new URL('./', location).pathname, nav = url.pathname === home || url.pathname === home + 'index.html'; // the game's own page, not other pages under the scope
-  e.respondWith(caches.open(CACHE).then(c => c.match(nav ? PAGE : e.request, {ignoreSearch:true}).then(hit => hit ||
+  e.respondWith(caches.open(CACHE).then(c => c.match(nav ? PAGE : e.request, {ignoreSearch:true}).then(clean).then(hit => hit ||
     fetch(e.request).then(res => { if (res.ok && !nav) c.put(e.request, res.clone()).catch(() => {}); return res; })
-      .catch(() => nav ? c.match(PAGE).then(x => x || new Response('', {status:504})) : new Response('', {status:504})))));
+      .catch(() => nav ? c.match(PAGE).then(clean).then(x => x || new Response('', {status:504})) : new Response('', {status:504})))));
 });
