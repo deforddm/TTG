@@ -7,7 +7,7 @@
 const MP = (() => {
   const CREW = ['sgt', 'tavos', 'mira', 'quill', 'ossel'];
   const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const st = {ws:null, me:null, hostId:null, host:false, code:'', name:'', players:[], owners:{}, status:'', dismissed:null, open:false};
+  const st = {ws:null, me:null, hostId:null, host:false, code:'', name:'', players:[], owners:{}, status:'', dismissed:null, open:false, lost:{}, want:false, retry:0, retryT:null, prevMe:null};
   const relayURL = () => {
     try { const q = new URLSearchParams(location.search).get('relay'); if (q) localStorage.setItem('ttg-relay', q); } catch (e) {}
     let r = ''; try { r = localStorage.getItem('ttg-relay') || ''; } catch (e) {}
@@ -22,34 +22,53 @@ const MP = (() => {
   const mpInfo = () => ({me:st.me, hostId:st.hostId, owners:st.owners});
   const inRun = () => view === 'rtbattle' && RT.R && RT.R.mp;
 
-  function connect(code, name, host){
-    leave(true);
-    st.code = code; st.name = name; st.host = host; st.players = []; st.owners = {}; st.hostId = null; st.status = 'Reaching the guild\'s relay…'; st.open = false; keepName(name);
+  /* rejoin: a dropped connection (a phone that went to another app, a wifi blip) comes back to the same room on its own.
+     The relay gives the new connection a new id; the host hands the shareholders back by the player's name. */
+  function connect(code, name, host, rejoin){
+    const keep = rejoin && inRun();
+    if (!rejoin) { st.lost = {}; st.retry = 0; }
+    leave(true); st.want = true; st.prevMe = keep ? st.me : null;
+    st.code = code; st.name = name; st.host = host; st.players = []; if (!keep) st.owners = {}; st.hostId = keep && host ? st.hostId : null; st.status = rejoin ? 'Reconnecting to the room…' : 'Reaching the guild\'s relay…'; st.open = false; keepName(name);
     let ws; try { ws = new WebSocket(`${relayURL()}/room/${code}?name=${encodeURIComponent(name)}`); } catch (e) { st.status = 'This browser could not open a connection.'; return render(); }
     st.ws = ws; render();
     const timer = setTimeout(() => { if (!st.open && st.ws === ws) { st.status = 'The guild\'s relay did not answer. Check the connection and try again.'; try { ws.close(); } catch (e) {} render(); } }, 8000);
     ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } if (st.ws === ws) onMsg(m); };
     ws.onclose = () => { clearTimeout(timer); if (st.ws !== ws) return; st.ws = null;
-      if (st.open) { st.status = 'The connection to the room was lost.'; st.open = false; if (inRun() && !RT.R.mp.host) { RT.R.paused = true; RT.R.pauseReason = 'Lost the connection to the host.'; } }
-      render(); };
+      if (st.open) { st.status = 'The connection to the room was lost. Reconnecting…'; st.open = false; if (inRun() && !RT.R.mp.host) { RT.R.paused = true; RT.R.pauseReason = 'Lost the connection. Reconnecting…'; } }
+      if (st.want) retryLater(); render(); };
     ws.onerror = () => { if (!st.open) st.status = 'Could not reach the guild\'s relay. Check the connection and try again.'; };
   }
-  function leave(quiet){ const ws = st.ws; st.ws = null; st.open = false; if (ws) try { ws.close(); } catch (e) {} if (!quiet) { st.code = ''; st.players = []; st.status = ''; } }
+  function retryLater(){ clearTimeout(st.retryT); if (!st.want || st.retry >= 12) { if (st.want) st.status = 'Could not get back into the room. Join again with the same code.'; return; }
+    const wait = Math.min(8000, 1000 * Math.pow(1.6, st.retry++)); st.retryT = setTimeout(() => { if (st.want && !st.ws) connect(st.code, st.name, st.host, true); }, wait); }
+  /* a phone coming back to the game reconnects at once */
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && st.want && !st.ws && st.code) { clearTimeout(st.retryT); st.retry = 0; connect(st.code, st.name, st.host, true); } });
+  function leave(quiet){ if (!quiet) { st.want = false; clearTimeout(st.retryT); } const ws = st.ws; st.ws = null; st.open = false; if (ws) try { ws.close(); } catch (e) {} if (!quiet) { st.code = ''; st.players = []; st.status = ''; } }
 
   function onMsg(m){
-    if (m.t === 'hello') { st.open = true; st.me = m.you; st.players = [{id:m.you, name:st.name}, ...m.peers];
-      if (st.host) { if (m.peers.length) { st.status = 'Someone is already using that code. Host again for a fresh one.'; leave(true); return render(); }
+    if (m.t === 'hello') { st.open = true; st.retry = 0; const was = st.prevMe; st.me = m.you; st.players = [{id:m.you, name:st.name}, ...m.peers];
+      if (st.host && was) { // the host back in its own room: its shareholders follow it to the new id
+        st.hostId = st.me; CREW.forEach(k => { if (!st.owners[k] || st.owners[k] === was) st.owners[k] = st.me; });
+        CREW.forEach(k => { if (!st.players.some(p => p.id === st.owners[k])) st.owners[k] = st.me; }); st.status = ''; lobbyOut();
+        if (inRun()) { RT.R.mp.hostId = st.me; RT.refresh(st.me); } return render(); }
+      if (st.host) { if (m.peers.length) { st.status = 'Someone is already using that code. Host again for a fresh one.'; st.want = false; leave(true); return render(); }
         st.hostId = st.me; CREW.forEach(k => { st.owners[k] = st.me; }); st.status = ''; lobbyOut(); }
-      else st.status = m.peers.length ? 'Waiting for the host…' : 'Nobody is in that room yet. Check the code with whoever is hosting.';
+      else { st.status = m.peers.length ? (was ? '' : 'Waiting for the host…') : was ? 'The host is not in the room right now. Waiting…' : 'Nobody is in that room yet. Check the code with whoever is hosting.';
+        if (inRun()) RT.refresh(st.me); }
       return render(); }
-    if (m.t === 'join') { st.players = st.players.filter(p => p.id !== m.id).concat([{id:m.id, name:m.name}]); if (st.host) { lobbyOut(); if (!inRun()) share(); } return render(); }
+    if (m.t === 'join') { st.players = st.players.filter(p => p.id !== m.id).concat([{id:m.id, name:m.name}]);
+      if (st.host) { const back = st.lost[m.name]; delete st.lost[m.name];
+        if (back) { back.forEach(k => { if (st.owners[k] === st.me) st.owners[k] = m.id; }); lobbyOut(); if (inRun()) { RT.refresh(); RT.R.pauseReason = `${m.name} is back, with their shareholders. Resume when you are ready.`; } }
+        else { lobbyOut(); if (!inRun()) share(); } }
+      return render(); }
     if (m.t === 'leave') { m.name = nameOf(m.id); st.players = st.players.filter(p => p.id !== m.id);
-      if (st.host) { CREW.forEach(k => { if (st.owners[k] === m.id) st.owners[k] = st.me; }); lobbyOut(); if (inRun()) { RT.R.paused = true; RT.R.pauseReason = `${(m.name || 'A player')} left. Their shareholders are yours now.`; } }
-      else if (m.id === st.hostId) { st.status = 'The host has left the room.'; st.hostId = null; if (inRun()) { RT.R.paused = true; RT.R.pauseReason = 'The host has left. The run ends here.'; } }
+      if (st.host) { const had = CREW.filter(k => st.owners[k] === m.id); if (had.length && m.name) st.lost[m.name] = had;
+        had.forEach(k => { st.owners[k] = st.me; }); lobbyOut();
+        if (inRun()) { RT.refresh(); RT.R.paused = true; RT.R.pauseReason = `${(m.name || 'A player')} dropped out. Their shareholders are yours until they come back with the same code.`; } }
+      else if (m.id === st.hostId) { st.status = 'The host dropped out. Waiting for them to come back.'; st.hostId = null; if (inRun()) { RT.R.paused = true; RT.R.pauseReason = 'The host dropped out. Waiting for them to come back.'; } }
       return render(); }
     if (st.host) { if (m.t === 'cmd' && inRun()) RT.applyCmd(m.from, m.c); return; }
     // a guest from here on: only the host's word counts
-    if (m.t === 'lobby') { if (st.hostId && m.from !== st.hostId) return; st.hostId = m.from; st.players = m.players; st.owners = m.owners; st.status = ''; if (inRun()) RT.R.mp.owners = m.owners; return render(); }
+    if (m.t === 'lobby') { if (st.hostId && m.from !== st.hostId) return; st.hostId = m.from; st.players = m.players; st.owners = m.owners; st.status = ''; if (inRun()) { RT.R.mp.owners = m.owners; RT.R.mp.hostId = m.from; RT.refresh(st.me); } return render(); }
     if (m.t === 'snap' && m.from === st.hostId) {
       if (st.dismissed === m.s.seed && m.s.result) return;
       if (!inRun() || RT.R.seed !== m.s.seed) { st.dismissed = null; RT.guestStart(m.s, mpInfo()); } else RT.guestSnap(m.s); }
@@ -61,7 +80,7 @@ const MP = (() => {
   /* the host starts the run: the first contract, signed as it stands, straight to the Ashway */
   function startRun(){
     if (!st.host || !st.open) return;
-    S = newState('Hask'); S.f.ttg_manifest = 1; S.f.ttg_casket = 'signed'; S.f.ttg_osselIn = 1; S.f.ttg_together = 1; save();
+    S = newState('Hask'); S.f.ttg_manifest = 1; S.f.ttg_casket = 'signed'; S.f.ttg_osselIn = 1; S.f.ttg_together = 1; S._guest = 1; // a co-op run never overwrites the host's story save
     startBattle('ttg_ashway', {mp:mpInfo()});
   }
   /* after a run: back to the room, still connected */

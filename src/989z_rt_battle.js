@@ -567,7 +567,11 @@ const RT = (() => {
     for (const f of R.fx) f.t += dt; R.fx = R.fx.filter(f => f.t < (f.kind === 'shot' ? .2 : .9));
   }
 
-  return {start:begin2, guestStart, guestSnap, applyCmd, snapshot, mine, update, finish, useSkill, skillState, orderMove, orderAttack, orderBoard, orderJump, freeSeat, toCar, enemies, squad, crew, inRange, setPaused, prefs,
+  /* the table changed (someone left, came back, or took over): redraw who drives whom */
+  function refresh(me){ if (!R || !R.mp) return; if (me) R.mp.me = me; R.rosterKey = JSON.stringify(R.mp.owners); if (R.selected && !mine(R.selected)) R.selected = null;
+    if (!R.selected) R.selected = crew().find(a => a.alive && mine(a)) || null; if (cv && cv.isConnected) buildRoster(); }
+
+  return {start:begin2, refresh, guestStart, guestSnap, applyCmd, snapshot, mine, update, finish, useSkill, skillState, orderMove, orderAttack, orderBoard, orderJump, freeSeat, toCar, enemies, squad, crew, inRange, setPaused, prefs,
     get R(){ return R; }};
 })();
 window.__rt = RT;
