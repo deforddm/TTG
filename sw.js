@@ -1,5 +1,5 @@
-const CACHE = 'ftr-v13.62.4'; // backups: a save file that survives a cleared browser
-const FONTS = 'ftr-fonts'; // Google Fonts, kept across versions so the typography survives offline play
+const CACHE = 'ttg-v0.1.0'; // backups: a save file that survives a cleared browser
+const FONTS = 'ttg-fonts'; // Google Fonts, kept across versions so the typography survives offline play
 const PAGE = './index.html'; // the 2.5 MB game. Precached once; './' and every navigation are answered from it.
 const ASSETS = [PAGE, './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 /* A new version installs and then WAITS. The page shows "Update ready"; tapping it posts 'skip', and only then
@@ -14,7 +14,7 @@ self.addEventListener('install', e => {
   e.waitUntil(Promise.all([caches.open(CACHE).then(c => c.addAll(ASSETS.map(u => new Request(u, {cache:'reload'})))), warmFonts()])); // past the HTTP cache: a new version must not precache the old page
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('ftr-v') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('ttg-v') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener('message', e => { if (e.data === 'skip') self.skipWaiting(); });
 self.addEventListener('fetch', e => {

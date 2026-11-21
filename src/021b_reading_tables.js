@@ -203,7 +203,7 @@ const READTABLE = {
   'moi:7a':{surf:'stone', p:{base:'#4a4a44', dark:'#1e1e1a', cracks:3, lichen:8}, light:'fire', lp:[.88, .92], lc:'#ff8a30', air:'sparks', dark:'#0a0a08', props:[['cedar', .0, .04, 26, .3], ['cedar', .5, -.02, 24, .7], ['cedar', 1, .45, 24, 2.7], ['cedar', .9, .98, 22, -2.2]]},
   'moi:7b':{surf:'shield', p:{base:'#5a4a38', dark:'#2a2218', under:{base:'#4a5a34', dark:'#242e18', grass:300, grassCol:'#6a7a40'}}, light:'dawn', lp:[.9, .1], lc:'#d0c8c0', air:'none', dark:'#0a0c08', props:[]},
 };
-const readingTableKey = (opt = {}) => { const bk = (S && S.book) || 'gotm', ch = (S && S.chapter) || 0;
+const readingTableKey = (opt = {}) => { const bk = (S && S.book) || BOOK, ch = (S && S.chapter) || 0;
   if (bk === 'gotm') return opt.self ? 'gotm:6self' : `gotm:${ch}`;
   if (bk === 'moi' && ch === 7) return typeof b3c7Flew === 'function' && b3c7Flew() ? 'moi:7a' : 'moi:7b';
   return `${bk}:${ch}`; };

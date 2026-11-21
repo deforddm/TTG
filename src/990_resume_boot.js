@@ -40,6 +40,7 @@ function loop(t){
 }
 function start(){
   applySet();
+  if (typeof TTG_CH1 !== 'undefined') registerChapter(1, TTG_CH1, 'ttg'); // Trygalle Run, Chapter One
   if (typeof CH1 !== 'undefined') registerChapter(1, CH1);
   if (typeof CH2 !== 'undefined') registerChapter(2, CH2);
   if (typeof CH3 !== 'undefined') registerChapter(3, CH3);

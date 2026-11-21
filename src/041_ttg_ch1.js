@@ -14,9 +14,9 @@ const ttgManifest = () => S.f.ttg_casket === 'refused' ? ['spice', 'salt', 'silk
 const TTG_CH1 = {
   title:'The Ashway', number:'One',
   endCap:()=>'Morning in Darujhistan. The yard gate shut behind the carriage, and the board is counting what came back.',
-  endScene:'city_street',
+  endScene:'ttg_kan',
   intro:{loc:'Darujhistan', sub:'The Trygalle Trade Guild\'s house · an hour before the gate', cap:'The guild yard under blue gaslight. One carriage is harnessed.',
-    scene:'city_street',
+    scene:'ttg_yard',
     paras:[
 `The board met at noon and gave you a carriage. Not a new one. Its last captain is on the list in the hall, three names from the bottom, and the shareholders who rode with her came back without her and without the cargo.`,
 `You are Captain {sgt}, shareholder of the Trygalle Trade Guild, and tonight you sign for your first contract. Four shareholders ride with you: Tavos on the bench, Mira at the door, Quill on the roof, and Ossel, who will open the gate and, if all goes well, close it again behind you.`,
@@ -45,9 +45,9 @@ const TTG_CH1 = {
           {x:12, y:2, kind:'guard', name:'The yard guard', line:'Gate opens at the bell. After that it\'s Ossel\'s gate, not mine.'}],
     npcs:[
       {id:'ressel', name:'Factor Ressel', kind:'pell', x:5, y:2, node:()=>S.f.ttg_manifest ? 'ttg_c1_factor_again' : 'ttg_c1_factor', fresh:()=>!S.f.ttg_manifest},
-      {id:'ossel', name:'Ossel', kind:'mammot', x:8, y:6, node:()=>'ttg_c1_ossel', fresh:()=>!S.f.ttg_ossel},
-      {id:'mira', name:'Mira', kind:'brisk', x:9, y:8, node:()=>'ttg_c1_mira', fresh:()=>!S.f.ttg_mira},
-      {id:'quill', name:'Quill', kind:'ellis', x:12, y:7, node:()=>'ttg_c1_quill', fresh:()=>!S.f.ttg_quill},
+      {id:'ossel', name:'Ossel', kind:'ossel', x:8, y:6, node:()=>'ttg_c1_ossel', fresh:()=>!S.f.ttg_ossel},
+      {id:'mira', name:'Mira', kind:'mira', x:9, y:8, node:()=>'ttg_c1_mira', fresh:()=>!S.f.ttg_mira},
+      {id:'quill', name:'Quill', kind:'quill', x:12, y:7, node:()=>'ttg_c1_quill', fresh:()=>!S.f.ttg_quill},
     ],
     quest:()=>!S.f.ttg_manifest ? 'Sign for the cargo in the counting-room' : 'Take the carriage out through the Ashway'},
 
@@ -67,9 +67,9 @@ const TTG_CH1 = {
             "...#..........#..#..",
             "#........#.........#" ],
       carriage:{x:1, y:5}, party:{tavos:'seat0', ossel:'seat2', sgt:[2, 4], mira:[2, 7], quill:[0, 4]},
-      foes:[['ashhound', 12, 1], ['ashhound', 14, 10], ['gaunt', 17, 2], ['gaunt', 9, 11]],
-      drift:{every:3.4, shifts:{4:{kind:'ash', count:30, wave:['ashhound', 'ashhound', 'gaunt', 'gaunt'], say:'The ground crumbles to ash. Crossing ash is slow, and more of them come.'},
-                                8:{kind:'fire', count:16, wave:['ashhound', 'ashhound', 'gaunt', 'gaunt', 'gaunt'], say:'Fire bleeds out of the sky. Standing in it burns. A larger pack arrives.'}}},
+      foes:[['ashhound', 12, 1], ['ashhound', 14, 10], ['ashhound', 18, 9], ['gaunt', 17, 2], ['gaunt', 9, 11], ['gaunt', 6, 0]],
+      drift:{every:3.4, shifts:{4:{kind:'ash', count:30, wave:['ashhound', 'ashhound', 'ashhound', 'gaunt', 'gaunt', 'gaunt'], say:'The ground crumbles to ash. Crossing ash is slow, and more of them come.'},
+                                8:{kind:'fire', count:16, wave:['ashhound', 'ashhound', 'ashhound', 'gaunt', 'gaunt', 'gaunt', 'gaunt'], say:'Fire bleeds out of the sky. Standing in it burns. A larger pack arrives.'}}},
       cargo:()=>ttgManifest()},
   },
   foes:{
@@ -79,7 +79,7 @@ const TTG_CH1 = {
 
   dlg:{
     /* ---- opening ---- */
-    ttg_c1_start:()=>({sp:'The guild yard', scene:'city_street', txt:
+    ttg_c1_start:()=>({sp:'The guild yard', scene:'ttg_yard', txt:
 `The yard smells of horses and lamp oil. The carriage stands by the gate with its doors open, black lacquer worn grey at every edge a hand has held, and the guild's knot painted fresh on the door. Somebody has painted over the old captain's name on the bench. Not well.
 
 Tavos is already on the bench, talking to the horses. Mira stands at the door as if it might leave without her. Quill is on the roof. Ossel sits by the fire with his staff across his knees and his eyes shut.
@@ -89,7 +89,7 @@ The counting-room lamp is lit. The factor does not like to wait.`,
           {t:'Go straight to the counting-room.', go:'ttg_c1_factor'}]}),
 
     /* ---- the factor and the manifest ---- */
-    ttg_c1_factor:()=>({sp:'Factor Ressel · counting-room', scene:'tent', txt:
+    ttg_c1_factor:()=>({sp:'Factor Ressel · counting-room', scene:'ttg_counting', txt:
 `Factor Ressel is a narrow man behind a wide desk. The manifest is already written out, and he turns it round so you can read it without picking it up.
 
 "Spice for a house in Kan. Silk for the same buyer. And this." He sets a hand on a small iron-bound casket at his elbow, the way a man rests his hand on a dog he is not sure of. "Sealed. A hundred in coin to the guild on delivery, unopened. The buyer was very clear about unopened."
@@ -133,7 +133,7 @@ He writes it down. Salt in place of the casket: worth a quarter as much, and twi
       ch:[{t:'Back to the yard.', go:()=>startExplore()}]}),
 
     /* ---- the shareholders ---- */
-    ttg_c1_ossel:()=>({sp:'Ossel · the carriage\'s mage', scene:'fire', fx:()=>{ S.f.ttg_ossel = 1; }, txt:
+    ttg_c1_ossel:()=>({sp:'Ossel · the carriage\'s mage', scene:'ttg_fire', fx:()=>{ S.f.ttg_ossel = 1; }, txt:
 `Ossel opens his eyes before you reach the fire. "The Ashway," he says. "Not the road I would choose. Not the road anyone would choose. That is why the buyer pays the guild."
 
 "It was a warren once. Something burned it, a long time ago, and it is still burning, slowly, from the edges in. The longer we stay, the more of it goes. First ash. Then fire. I can hold it still for a little while. Not long. Tell me when."`,
@@ -176,14 +176,14 @@ She pulls herself back up. A moment later her voice comes down again. "Put me on
       ch:[{t:'"Shares out at the far side. All of us."', fx:()=>{ ['tavos', 'mira', 'quill', 'ossel'].forEach(id => loy(id, 1)); }, go:'ttg_c1_gate'},
           {t:'"Mind the crates. The board is counting."', go:'ttg_c1_gate'},
           {t:'"Not yet."', go:()=>startExplore()}]}),
-    ttg_c1_gate:()=>({sp:'The gate', txt:
+    ttg_c1_gate:()=>({sp:'The gate', scene:'ttg_gate', txt:
 `Ossel puts both hands on the air and pulls, the way a man opens a heavy curtain, and the yard gate is not a gate any more. Beyond it: grey ground to the horizon, standing stones like broken teeth, and a sky the colour of old coals.
 
 Tavos snaps the reins. The carriage goes through.
 
 Behind you the gate shuts. Ahead, low shapes are already moving between the stones.`,
       ch:[{t:'Into the Ashway.', go:()=>startBattle('ttg_ashway')}]}),
-    ttg_c1_through:()=>({sp:'The far side', scene:'city_street', txt:
+    ttg_c1_through:()=>({sp:'The far side', scene:'ttg_kan', txt:
 `The far gate opens on a cobbled yard in Kan, wet with real rain. The horses stand blowing in the traces. Tavos is laughing at the weather.
 
 ${S.f.ttg_cratesLeft === 3 ? 'Every crate is sealed. The buyer\'s clerk counts them twice, and then once more, and signs.' : S.f.ttg_cratesLeft ? `${S.f.ttg_cratesLeft} of three crates come off the carriage whole. The clerk writes the rest down as losses, without comment, and signs for what is left.` : 'Nothing comes off the carriage whole.'}
@@ -200,3 +200,5 @@ ${S.f.ttg_lost ? `Not everyone came through. ${S.f.ttg_lost} stayed in the Ashwa
   },
   tease:'Next: the board reads the manifest, and a second contract comes with a name nobody in the house wants to say.',
 };
+/* in the yard Tavos is on the bench already (the carriage, W), not walking behind the captain */
+AWAY.push(k => k === 'tavos' && S && S.area === 'ttg_yard');

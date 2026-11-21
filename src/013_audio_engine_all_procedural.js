@@ -112,7 +112,7 @@ const AUDIO = (() => {
   Object.keys(VOICES).forEach(k => { VOICES[k].key = k; VOICES[k].alt = ALT[k]; VOICES[k].trim = TRIM[k] || {}; });
   let V = VOICES.gotm;
   const f = (deg, oct = 0) => V.root * Math.pow(2, (V.scale[((deg % 7) + 7) % 7] + 12 * (Math.floor(deg / 7) + oct)) / 12);
-  function voiceKey(){ try { return (typeof S !== 'undefined' && S ? S.book || 'gotm' : typeof BOOK !== 'undefined' && BOOK) || 'gotm'; } catch(e) { return 'gotm'; } }
+  function voiceKey(){ try { return (typeof S !== 'undefined' && S ? S.book || BOOK : typeof BOOK !== 'undefined' && BOOK) || BOOK; } catch(e) { return 'gotm'; } }
   const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)], chance = p => Math.random() < p, P = () => rnd(-.8, .8);
   /* v13.61.1 (David, Nov 20, 2026: "sound tends to get scratchy or have little clicks"). The clock the page reads is behind the clock the sound runs on,
      by a buffer or more on a phone. A sound started "now" was already a little in the past when it reached the speaker, so its few-millisecond fade-in had

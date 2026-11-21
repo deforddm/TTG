@@ -16,7 +16,7 @@ function saveWorked(){ if (!saveBad) return; saveBad = false; const w = typeof d
 let oopsCount = 0; const oopsSeen = {};
 function crashText(msg, stack){ let where = 'title';
   try { if (S) where = `book ${S.book || 'gotm'}, chapter ${S.chapter}, ${view}${S.node ? ', page ' + S.node : ''}${B && B.id ? ', fight ' + B.id : ''}`; } catch(e) {}
-  return `From the Ranks v${VERSION}\n${where}\n${msg}\n${String(stack || '').split('\n').slice(0, 6).join('\n')}\n${typeof navigator !== 'undefined' ? navigator.userAgent : ''}`.trim(); }
+  return `Trygalle Run v${VERSION}\n${where}\n${msg}\n${String(stack || '').split('\n').slice(0, 6).join('\n')}\n${typeof navigator !== 'undefined' ? navigator.userAgent : ''}`.trim(); }
 function showOops(msg, stack){ msg = String(msg || 'Unknown error');
   if (/ResizeObserver loop|^Script error\.?$/.test(msg) || oopsSeen[msg] || oopsCount >= 3 || typeof document === 'undefined' || !document.body) return;
   oopsSeen[msg] = 1; oopsCount++;

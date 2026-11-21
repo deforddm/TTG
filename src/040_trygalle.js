@@ -7,7 +7,7 @@
 /* one book on the shelf */
 Object.keys(BOOKS).forEach(k => delete BOOKS[k]);
 BOOKS.ttg = {id:'ttg', n:1, word:'One', title:'The Trygalle Trade Guild', name:'Trygalle Run', h1:['Trygalle', 'Run'],
-  squad:'the carriage', unit:'the carriage', tag:'The guild goes where no road goes. Six shareholders, one carriage, and a cargo someone will pay anything to have carried through the warrens.',
+  squad:'the carriage', unit:'the carriage', tag:'The guild goes where no road goes. Five shareholders, one carriage, and a cargo someone will pay anything to have carried through the warrens.',
   blurb:'Darujhistan, the Trygalle Trade Guild\'s house. A new captain, a first contract, and a road through a dead warren the guild calls the Ashway.'};
 BOOKSNAP.ttg = {ch:{}, end:{}, tease:{}};
 
@@ -101,3 +101,7 @@ function ttgWords(root){
 new MutationObserver(() => { if (ttgWords.busy) return; ttgWords.busy = true; try { ttgWords(document.getElementById('app')); } finally { ttgWords.busy = false; } })
   .observe(document.getElementById('app'), {childList:true, subtree:true, characterData:true});
 setBook('ttg');
+
+/* the shareholders wear FTR's figures: anywhere the engine draws a squadmate by id (the map, the backdrops), it gets their look */
+const TTG_FIG = {tavos:'garrow', mira:'brisk', quill:'ellis', ossel:'mammot'};
+{ const _drawFigure = drawFigure; drawFigure = function(ctx, kind, ...rest){ return _drawFigure.call(this, ctx, TTG_FIG[kind] || kind, ...rest); }; }

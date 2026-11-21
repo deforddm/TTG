@@ -3,7 +3,7 @@
    The only thing that survives that is a copy kept somewhere else: a backup file (every sergeant, the settings, the
    deeds seen) saved to the phone or sent on to Drive or mail, or a save code copied out. This file makes both easy
    and reminds the player when a backup is overdue. It never changes what a save holds. */
-const BKEY = 'from-the-ranks-backup'; // {at: ms, n: progress at that backup}
+const BKEY = 'trygalle-run-backup'; // {at: ms, n: progress at that backup}
 function backupMark(){ let m = null; try { m = JSON.parse(localStorage.getItem(BKEY)); } catch(e) {} return m && m.at ? m : null; }
 /* how far the device has come: every sergeant's chapter count. Three chapters past the last backup is overdue. */
 function backupProgress(list){ return (list || roster().list).reduce((n, e) => n + 1 + (e.ch || 0) + (e.done ? 1 : 0), 0); }
@@ -23,7 +23,7 @@ function backupFile(){ return new File([backupText()], backupName(), {type:'appl
 function downloadBackup(){ try { const f = backupFile(), u = URL.createObjectURL(f), a = document.createElement('a'); a.href = u; a.download = f.name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); markBackup(); return true; } catch(e) { return false; } }
 /* share: the phone's own share sheet (Drive, mail, Files, another device), where the browser has one that takes files */
 function canShareBackup(){ try { return !!(navigator.share && navigator.canShare && navigator.canShare({files:[new File(['x'], 'x.json', {type:'application/json'})]})); } catch(e) { return false; } }
-function shareBackup(){ try { return navigator.share({files:[backupFile()], title:'From the Ranks saves'}).then(() => { markBackup(); return true; }, () => false); } catch(e) { return Promise.resolve(false); } }
+function shareBackup(){ try { return navigator.share({files:[backupFile()], title:'Trygalle Run saves'}).then(() => { markBackup(); return true; }, () => false); } catch(e) { return Promise.resolve(false); } }
 /* restore: a backup file, or a single save code, or a single save pasted as text. Returns what it found, never writes. */
 function parseBackup(text){ const t = String(text || '').trim(); if (!t) return null; let o = null;
   try { o = JSON.parse(t); } catch(e) { try { o = JSON.parse(decodeURIComponent(escape(atob(t)))); } catch(e2) { return null; } }

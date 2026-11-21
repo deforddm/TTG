@@ -661,3 +661,39 @@ body.vision #sheet .choice{border-left-color:rgba(154,134,224,.6)}
 /* v13.62.0: the hold switch under a healing trick on the sheet */
 .abl .holdbtn{display:block;margin-top:8px;font-size:.82rem;padding:6px 10px}
 .abl .holdbtn[aria-pressed="true"]{border-color:var(--brass);color:var(--brass2)}
+/* ---- Trygalle Run: the real-time carriage battle (989z) ---- */
+body.rt #app{max-width:1100px}
+.rtclock{font-variant-numeric:tabular-nums;color:var(--mute);font-family:var(--label);letter-spacing:.06em;margin-right:6px}
+.rtdrift{display:flex;align-items:center;gap:8px;color:var(--mute);font-family:var(--label);font-size:.85rem;letter-spacing:.08em}
+.rtdrift .lbl{text-transform:uppercase}
+.rtdrift .bar{display:flex;gap:3px}
+.rtdrift .bar i{width:10px;height:13px;background:var(--line);border-radius:1px}
+.rtdrift .bar i.on{background:var(--brass)}.rtdrift .bar i.on.ash{background:var(--ash)}.rtdrift .bar i.on.fire{background:var(--blood2)}
+.rtdrift .bar i.mark{outline:1px solid var(--mute);outline-offset:1px}
+.rtdrift .dn{font-style:italic;letter-spacing:.02em}
+.rtdrift .sp{flex:1}
+.rtstage{position:relative;display:flex;justify-content:center;align-items:flex-start;border:1px solid var(--line2);background:#0a0908;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.rtstage canvas{display:block;touch-action:none}
+.rtbanner{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(13,11,10,.9);border:1px solid var(--brass);padding:6px 14px;max-width:86%;text-align:center;pointer-events:none;font-family:var(--prose)}
+.rtbanner b{color:var(--brass2);font-family:var(--label);letter-spacing:.08em;text-transform:uppercase;font-size:.8rem;margin-right:8px;font-weight:700}
+.rtlog{position:absolute;left:10px;right:10px;bottom:8px;font-size:.85rem;line-height:1.35;pointer-events:none;text-shadow:0 1px 2px #000,0 0 6px #000;font-family:var(--prose)}
+.rtlog div:not(:last-child){opacity:.6}
+.rtover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,8,7,.72);padding:16px}
+.rtover .ubar{max-width:440px;text-align:center;align-items:center;gap:12px;padding:18px}
+.rtot{font-family:var(--display);font-size:1.9rem;color:var(--brass2)}.rtot.lose{color:var(--blood2)}
+.rtover .txt{font-family:var(--prose);line-height:1.5}
+.rtorders{display:flex;gap:8px;flex-wrap:wrap}
+.rtorders .sp{flex:1}
+.rtroster{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.rtcard{text-align:left;padding:6px 8px;min-height:58px;display:flex;flex-direction:column;gap:3px;min-width:0;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line2);color:var(--ink);cursor:pointer;border-radius:2px}
+.rtcard.sel{border-color:var(--brass);box-shadow:inset 0 0 0 1px var(--brass)}
+.rtcard.down{opacity:.45}
+.rtcard .top{display:flex;justify-content:space-between;gap:4px}
+.rtcard .nm{font-family:var(--label);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rtcard .rl{color:var(--mute);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+.rtcard .grit{height:4px;background:var(--line);overflow:hidden}.rtcard .grit i{display:block;height:100%;background:#8fc29f}
+.rtcard .st{font-size:.75rem;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rtcard .st .w{color:var(--blood2)}
+.rthelp{color:var(--mute);font-size:.82rem}
+@media (max-width:520px){.rtorders{gap:5px;flex-wrap:nowrap}.rtorders .sp{display:none}.rtorders .btn{flex:1 1 auto;min-width:0;padding:8px 6px;font-size:.85rem}
+  .rtroster{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.rtcard{min-height:0;padding:5px 5px 6px}.rtcard .nm{font-size:.8rem}.rtcard .rl,.rtcard .st{display:none}.rthelp{display:none}
+  .rtlog{font-size:.75rem;left:6px;right:6px;bottom:4px}.rtbanner{font-size:.85rem;padding:4px 10px;top:4px}}

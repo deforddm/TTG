@@ -533,7 +533,7 @@ const NOTES = [
   ['3.7.3', ['The road from Pale is eleven days everywhere. The Moranth crate holds twelve cussers and the dud. The Phoenix is up the alley in the Daru District. Plus a sweep of Chapters 3 to 7.']],
   ['3.7.2', ['Maps and book beats: the Worry Gate, Rake and the Hounds in the hills, Coll on the slope, five dragons at the Fete, the Pannion Seer.']],
 ];
-const SEENKEY = 'from-the-ranks-seen';
+const SEENKEY = 'trygalle-run-seen';
 /* since = the version this player last saw: every note after it, newest first. From the title's version number or Settings
    (since null): the newest note, with every earlier one behind "Earlier versions". */
 function openNotes(since){

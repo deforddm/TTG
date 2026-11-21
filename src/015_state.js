@@ -1,5 +1,5 @@
 /* ============ state ============ */
-const KEY = 'from-the-ranks-v1';
+const KEY = 'trygalle-run-v1';
 let S = null;          // saved game state
 let B = null;          // live battle
 let view = 'title';
@@ -15,7 +15,7 @@ function newState(name){
 }
 /* fill in fields added after v1 saves, so old saves keep working */
 function migrate(s){
-  s.book ??= 'gotm'; setBook(s.book); // v4.0: which book this save is in; the chapters, end lines and the sergeant's history follow it
+  s.book ??= BOOK; setBook(s.book); // v4.0: which book this save is in; the chapters, end lines and the sergeant's history follow it
   if (s.scene === 'end') s.scene = 'chend'; // the oldest saves called the chapter-end page 'end'
   s.tuftVisions ??= [...(s.seenVisions || [])]; // v3.16: the visions Tuft saw at a reading; older saves did not tell them apart from journal replays
   s.chapter ??= 0; s.area ??= 'pale'; s.squad ??= [...PORDER]; s.kit ??= []; s.picksDue ??= []; s.chapters ??= {};
@@ -48,14 +48,14 @@ function migrate(s){
 }
 /* swap the book being played: CHAPTERS, CHEND and CHTEASE (37) hold one book at a time, and so does the sergeant's own history (TPL.sgt) */
 function setBook(b){
-  b = BOOKS[b] ? b : 'gotm'; if (b === BOOK) return;
+  b = BOOKS[b] ? b : BOOK; if (b === BOOK) return;
   const out = BOOKSNAP[BOOK]; out.ch = {...CHAPTERS}; out.end = {...CHEND}; out.tease = {...CHTEASE}; out.sgt = Object.getOwnPropertyDescriptors(TPL.sgt);
   [CHAPTERS, CHEND, CHTEASE].forEach(o => Object.keys(o).forEach(k => delete o[k]));
   const inn = BOOKSNAP[b]; Object.assign(CHAPTERS, inn.ch); Object.assign(CHEND, inn.end); Object.assign(CHTEASE, inn.tease);
   if (inn.sgt) TPL.sgt = Object.defineProperties({}, inn.sgt);
   BOOK = b; if (typeof PORTRAIT_CACHE !== 'undefined') PORTRAIT_CACHE.clear(); try { AUDIO.revoice(); } catch(e) {} // the music takes the book's voice (v6.8.0)
 }
-const inBook = b => (S ? S.book || 'gotm' : BOOK) === b;
+const inBook = b => (S ? S.book || BOOK : BOOK) === b;
 /* difficulty, per sergeant: Story (gentler foes, easier checks), Soldier (as written), Bridgeburner (harder). Changeable any time. */
 const DIFFS = {story:{name:'Story', hp:.75, dmg:.7, atk:-1, dc:-2, blurb:'Softer fights, easier checks, enemies without tricks, and the gods always answer. For the story.'},
   soldier:{name:'Soldier', hp:1, dmg:1, atk:0, dc:0, blurb:'The book as written. Enemies have their tricks; each god answers once a chapter.'},
@@ -131,7 +131,7 @@ function unequip(who, slot){ delete S.gear[who][slot]; save(); }
 const NAME = id => id === 'sgt' ? S.name : TPL[id].name;
 /* saves: one slot per sergeant, so more than one person can play on the same device. The roster lists them, last played first.
    Each game carries its slot id (S.sid); a sergeant's slot lives at KEY + ':' + sid. */
-const RKEY = 'from-the-ranks-roster', slotKey = id => KEY + ':' + id;
+const RKEY = 'trygalle-run-roster', slotKey = id => KEY + ':' + id;
 const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 const newSid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 /* what the title shows for a sergeant without opening their save: chapter, where they stand, level, when last played */

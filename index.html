@@ -2,18 +2,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0d0b0a">
-<meta name="description" content="From the Ranks: a free Malazan fan RPG told by ordinary soldiers. Ten books, one beside each novel of the Malazan Book of the Fallen.">
+<meta name="description" content="Trygalle Run: a free Malazan fan game about the Trygalle Trade Guild. Squad tactics in real time with pause.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="From the Ranks">
-<meta property="og:description" content="A free Malazan fan RPG told by ordinary soldiers. Ten books, one beside each novel, from Gardens of the Moon to The Crippled God.">
+<meta property="og:title" content="Trygalle Run">
+<meta property="og:description" content="A free Malazan fan game: guild shareholders drive a carriage through the warrens, and fight to keep the cargo sealed.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="FTR">
+<meta name="apple-mobile-web-app-title" content="Trygalle">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
-<title>From the Ranks</title>
+<title>Trygalle Run</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+Sans+SC:wght@500;700&display=swap">
@@ -681,13 +681,49 @@ body.vision #sheet .choice{border-left-color:rgba(154,134,224,.6)}
 /* v13.62.0: the hold switch under a healing trick on the sheet */
 .abl .holdbtn{display:block;margin-top:8px;font-size:.82rem;padding:6px 10px}
 .abl .holdbtn[aria-pressed="true"]{border-color:var(--brass);color:var(--brass2)}
+/* ---- Trygalle Run: the real-time carriage battle (989z) ---- */
+body.rt #app{max-width:1100px}
+.rtclock{font-variant-numeric:tabular-nums;color:var(--mute);font-family:var(--label);letter-spacing:.06em;margin-right:6px}
+.rtdrift{display:flex;align-items:center;gap:8px;color:var(--mute);font-family:var(--label);font-size:.85rem;letter-spacing:.08em}
+.rtdrift .lbl{text-transform:uppercase}
+.rtdrift .bar{display:flex;gap:3px}
+.rtdrift .bar i{width:10px;height:13px;background:var(--line);border-radius:1px}
+.rtdrift .bar i.on{background:var(--brass)}.rtdrift .bar i.on.ash{background:var(--ash)}.rtdrift .bar i.on.fire{background:var(--blood2)}
+.rtdrift .bar i.mark{outline:1px solid var(--mute);outline-offset:1px}
+.rtdrift .dn{font-style:italic;letter-spacing:.02em}
+.rtdrift .sp{flex:1}
+.rtstage{position:relative;display:flex;justify-content:center;align-items:flex-start;border:1px solid var(--line2);background:#0a0908;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.rtstage canvas{display:block;touch-action:none}
+.rtbanner{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(13,11,10,.9);border:1px solid var(--brass);padding:6px 14px;max-width:86%;text-align:center;pointer-events:none;font-family:var(--prose)}
+.rtbanner b{color:var(--brass2);font-family:var(--label);letter-spacing:.08em;text-transform:uppercase;font-size:.8rem;margin-right:8px;font-weight:700}
+.rtlog{position:absolute;left:10px;right:10px;bottom:8px;font-size:.85rem;line-height:1.35;pointer-events:none;text-shadow:0 1px 2px #000,0 0 6px #000;font-family:var(--prose)}
+.rtlog div:not(:last-child){opacity:.6}
+.rtover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,8,7,.72);padding:16px}
+.rtover .ubar{max-width:440px;text-align:center;align-items:center;gap:12px;padding:18px}
+.rtot{font-family:var(--display);font-size:1.9rem;color:var(--brass2)}.rtot.lose{color:var(--blood2)}
+.rtover .txt{font-family:var(--prose);line-height:1.5}
+.rtorders{display:flex;gap:8px;flex-wrap:wrap}
+.rtorders .sp{flex:1}
+.rtroster{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.rtcard{text-align:left;padding:6px 8px;min-height:58px;display:flex;flex-direction:column;gap:3px;min-width:0;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line2);color:var(--ink);cursor:pointer;border-radius:2px}
+.rtcard.sel{border-color:var(--brass);box-shadow:inset 0 0 0 1px var(--brass)}
+.rtcard.down{opacity:.45}
+.rtcard .top{display:flex;justify-content:space-between;gap:4px}
+.rtcard .nm{font-family:var(--label);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rtcard .rl{color:var(--mute);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+.rtcard .grit{height:4px;background:var(--line);overflow:hidden}.rtcard .grit i{display:block;height:100%;background:#8fc29f}
+.rtcard .st{font-size:.75rem;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rtcard .st .w{color:var(--blood2)}
+.rthelp{color:var(--mute);font-size:.82rem}
+@media (max-width:520px){.rtorders{gap:5px;flex-wrap:nowrap}.rtorders .sp{display:none}.rtorders .btn{flex:1 1 auto;min-width:0;padding:8px 6px;font-size:.85rem}
+  .rtroster{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.rtcard{min-height:0;padding:5px 5px 6px}.rtcard .nm{font-size:.8rem}.rtcard .rl,.rtcard .st{display:none}.rthelp{display:none}
+  .rtlog{font-size:.75rem;left:6px;right:6px;bottom:4px}.rtbanner{font-size:.85rem;padding:4px 10px;top:4px}}
 </style>
 <style>[hidden]{display:none!important}body{margin:0}</style>
 </head><body>
 
-<noscript><p style="color:#e6dac2;background:#0d0b0a;font:18px/1.5 Georgia,serif;padding:24px">From the Ranks is a game that runs in the browser, and it needs JavaScript turned on to play.</p></noscript>
+<noscript><p style="color:#e6dac2;background:#0d0b0a;font:18px/1.5 Georgia,serif;padding:24px">Trygalle Run is a game that runs in the browser, and it needs JavaScript turned on to play.</p></noscript>
 
-<div id="app"><div class="bootline"><b>From the Ranks</b><span>Loading the ten books</span></div></div>
+<div id="app"><div class="bootline"><b>Trygalle Run</b><span>Harnessing the horses</span></div></div>
 <div id="sheet" hidden></div>
 <div id="modal" role="dialog" aria-modal="true" aria-label="Squad, journal and save" hidden></div>
 <div id="settings" role="dialog" aria-modal="true" aria-label="Settings" hidden></div>
@@ -697,7 +733,7 @@ body.vision #sheet .choice{border-left-color:rgba(154,134,224,.6)}
 <div class="flash" id="flash"></div>
 <div class="red" id="red"></div>
 <script>
-const VERSION = '13.62.4';
+const VERSION = '0.1.0';
 
 /* ============ utilities ============ */
 const $ = s => document.querySelector(s);
@@ -737,16 +773,16 @@ function toTop(){ const go = () => { try { window.scrollTo(0, 0); } catch(e) {} 
 const AWAY = []; const mateAway = k => AWAY.some(f => { try { return f(k); } catch(e) { return false; } });
 
 /* ============ settings ============ */
-/* From the Ranks keeps its own saved data ('from-the-ranks-*'). The two games share this site, so on the first run on a device every
+/* From the Ranks keeps its own saved data ('trygalle-run-*'). The two games share this site, so on the first run on a device every
    sergeant, setting and deed that Ashes of the Pale left here is copied across once, and nobody starts over. Ashes keeps its own copy. */
 (function importAshes(){ try {
-  const ls = localStorage, OLD = 'ashes-of-the-pale-', NEW = 'from-the-ranks-';
+  const ls = localStorage, OLD = 'trygalle-run-none-', NEW = 'trygalle-run-';
   if (ls.getItem(NEW + 'imported') != null || ls.getItem(NEW + 'roster')) return; // once per device, and never over a From the Ranks roster
   const keys = []; for (let i = 0; i < ls.length; i++) { const k = ls.key(i); if (k && k.startsWith(OLD) && k !== OLD + 'install') keys.push(k); }
   keys.forEach(k => { const v = ls.getItem(k); if (v != null) ls.setItem(NEW + k.slice(OLD.length), v); });
   ls.setItem(NEW + 'imported', String(keys.length));
 } catch(e) {} })();
-const SKEY = 'from-the-ranks-settings';
+const SKEY = 'trygalle-run-settings';
 const SET = Object.assign({master:.8, music:.6, sfx:.8, amb:.6, shake:true, motion:'auto', fs:1, speed:1, dice:true, blood:true, map:'close', full:false, art:true},
   (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch(e) { return {}; } })());
 function saveSet(){ try { localStorage.setItem(SKEY, JSON.stringify(SET)); } catch(e) {} applySet(); }
@@ -873,7 +909,7 @@ const AUDIO = (() => {
   Object.keys(VOICES).forEach(k => { VOICES[k].key = k; VOICES[k].alt = ALT[k]; VOICES[k].trim = TRIM[k] || {}; });
   let V = VOICES.gotm;
   const f = (deg, oct = 0) => V.root * Math.pow(2, (V.scale[((deg % 7) + 7) % 7] + 12 * (Math.floor(deg / 7) + oct)) / 12);
-  function voiceKey(){ try { return (typeof S !== 'undefined' && S ? S.book || 'gotm' : typeof BOOK !== 'undefined' && BOOK) || 'gotm'; } catch(e) { return 'gotm'; } }
+  function voiceKey(){ try { return (typeof S !== 'undefined' && S ? S.book || BOOK : typeof BOOK !== 'undefined' && BOOK) || BOOK; } catch(e) { return 'gotm'; } }
   const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)], chance = p => Math.random() < p, P = () => rnd(-.8, .8);
   /* v13.61.1 (David, Nov 20, 2026: "sound tends to get scratchy or have little clicks"). The clock the page reads is behind the clock the sound runs on,
      by a buffer or more on a phone. A sound started "now" was already a little in the past when it reached the speaker, so its few-millisecond fade-in had
@@ -1901,7 +1937,7 @@ function packKitHTML(){ const kit = [...new Set((S && S.kit) || [])].filter(g =>
       return `<${tap ? `button type="button" data-iz="item/${g}" aria-label="Look at ${esc(it.name)}"` : 'div'} class="pkit">${art('item/' + g, 'ico item')}<span class="pkt"><b>${esc(it.name)}</b><span class="stat">${esc(itemStatLine(g))}</span><small class="${wornBy(g) ? 'worn' : ''}">${esc(wornWords(g)[0].toUpperCase() + wornWords(g).slice(1))}</small></span></${tap ? 'button' : 'div'}>`; }).join('')}`; }).join('')}</div>`; }
 
 /* ============ state ============ */
-const KEY = 'from-the-ranks-v1';
+const KEY = 'trygalle-run-v1';
 let S = null;          // saved game state
 let B = null;          // live battle
 let view = 'title';
@@ -1917,7 +1953,7 @@ function newState(name){
 }
 /* fill in fields added after v1 saves, so old saves keep working */
 function migrate(s){
-  s.book ??= 'gotm'; setBook(s.book); // v4.0: which book this save is in; the chapters, end lines and the sergeant's history follow it
+  s.book ??= BOOK; setBook(s.book); // v4.0: which book this save is in; the chapters, end lines and the sergeant's history follow it
   if (s.scene === 'end') s.scene = 'chend'; // the oldest saves called the chapter-end page 'end'
   s.tuftVisions ??= [...(s.seenVisions || [])]; // v3.16: the visions Tuft saw at a reading; older saves did not tell them apart from journal replays
   s.chapter ??= 0; s.area ??= 'pale'; s.squad ??= [...PORDER]; s.kit ??= []; s.picksDue ??= []; s.chapters ??= {};
@@ -1950,14 +1986,14 @@ function migrate(s){
 }
 /* swap the book being played: CHAPTERS, CHEND and CHTEASE (37) hold one book at a time, and so does the sergeant's own history (TPL.sgt) */
 function setBook(b){
-  b = BOOKS[b] ? b : 'gotm'; if (b === BOOK) return;
+  b = BOOKS[b] ? b : BOOK; if (b === BOOK) return;
   const out = BOOKSNAP[BOOK]; out.ch = {...CHAPTERS}; out.end = {...CHEND}; out.tease = {...CHTEASE}; out.sgt = Object.getOwnPropertyDescriptors(TPL.sgt);
   [CHAPTERS, CHEND, CHTEASE].forEach(o => Object.keys(o).forEach(k => delete o[k]));
   const inn = BOOKSNAP[b]; Object.assign(CHAPTERS, inn.ch); Object.assign(CHEND, inn.end); Object.assign(CHTEASE, inn.tease);
   if (inn.sgt) TPL.sgt = Object.defineProperties({}, inn.sgt);
   BOOK = b; if (typeof PORTRAIT_CACHE !== 'undefined') PORTRAIT_CACHE.clear(); try { AUDIO.revoice(); } catch(e) {} // the music takes the book's voice (v6.8.0)
 }
-const inBook = b => (S ? S.book || 'gotm' : BOOK) === b;
+const inBook = b => (S ? S.book || BOOK : BOOK) === b;
 /* difficulty, per sergeant: Story (gentler foes, easier checks), Soldier (as written), Bridgeburner (harder). Changeable any time. */
 const DIFFS = {story:{name:'Story', hp:.75, dmg:.7, atk:-1, dc:-2, blurb:'Softer fights, easier checks, enemies without tricks, and the gods always answer. For the story.'},
   soldier:{name:'Soldier', hp:1, dmg:1, atk:0, dc:0, blurb:'The book as written. Enemies have their tricks; each god answers once a chapter.'},
@@ -2033,7 +2069,7 @@ function unequip(who, slot){ delete S.gear[who][slot]; save(); }
 const NAME = id => id === 'sgt' ? S.name : TPL[id].name;
 /* saves: one slot per sergeant, so more than one person can play on the same device. The roster lists them, last played first.
    Each game carries its slot id (S.sid); a sergeant's slot lives at KEY + ':' + sid. */
-const RKEY = 'from-the-ranks-roster', slotKey = id => KEY + ':' + id;
+const RKEY = 'trygalle-run-roster', slotKey = id => KEY + ':' + id;
 const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 const newSid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 /* what the title shows for a sergeant without opening their save: chapter, where they stand, level, when last played */
@@ -4876,7 +4912,7 @@ const READTABLE = {
   'moi:7a':{surf:'stone', p:{base:'#4a4a44', dark:'#1e1e1a', cracks:3, lichen:8}, light:'fire', lp:[.88, .92], lc:'#ff8a30', air:'sparks', dark:'#0a0a08', props:[['cedar', .0, .04, 26, .3], ['cedar', .5, -.02, 24, .7], ['cedar', 1, .45, 24, 2.7], ['cedar', .9, .98, 22, -2.2]]},
   'moi:7b':{surf:'shield', p:{base:'#5a4a38', dark:'#2a2218', under:{base:'#4a5a34', dark:'#242e18', grass:300, grassCol:'#6a7a40'}}, light:'dawn', lp:[.9, .1], lc:'#d0c8c0', air:'none', dark:'#0a0c08', props:[]},
 };
-const readingTableKey = (opt = {}) => { const bk = (S && S.book) || 'gotm', ch = (S && S.chapter) || 0;
+const readingTableKey = (opt = {}) => { const bk = (S && S.book) || BOOK, ch = (S && S.chapter) || 0;
   if (bk === 'gotm') return opt.self ? 'gotm:6self' : `gotm:${ch}`;
   if (bk === 'moi' && ch === 7) return typeof b3c7Flew === 'function' && b3c7Flew() ? 'moi:7a' : 'moi:7b';
   return `${bk}:${ch}`; };
@@ -6606,7 +6642,7 @@ function tpatchCls(k){ return 'tpatch' + (k && / viewBox="0 0 600 /.test(ART[k] 
 /* installing the game as an app on a PC. Chrome and Edge offer it with beforeinstallprompt, which is held here and fired from our own
    button (the title offers it once in a while; Settings always has it). Safari on a Mac has File > Add to Dock and no event, so it gets
    the directions. Firefox on a PC can't install web apps, so it gets nothing. Never offered inside the installed app itself. */
-const INSTKEY = 'from-the-ranks-install';
+const INSTKEY = 'trygalle-run-install';
 let installEvt = null;
 const asApp = () => { try { return window.matchMedia('(display-mode: standalone), (display-mode: window-controls-overlay), (display-mode: minimal-ui)').matches || navigator.standalone === true; } catch(e) { return false; } };
 const macSafari = () => { const u = navigator.userAgent; return /Macintosh/.test(u) && /Version\/(1[7-9]|[2-9]\d)\b.*Safari\//.test(u) && !/Chrome|Chromium|Edg|OPR|Firefox/.test(u) && !('ontouchend' in document); };
@@ -6636,16 +6672,16 @@ const agoText = t => { if (!t) return ''; const d = Math.floor((new Date().setHo
    joins it without an edit here */
 function titleCredit(){ const bs = shelfBooks().sort((a, b) => a.n - b.n); if (!bs.length) return ''; const last = bs[bs.length - 1];
   return bs.length === 1 ? `Book One, ${bs[0].name}, beside ${bs[0].title}.` : `${last.word} books so far, each beside one of Erikson's Malazan novels, in order, from ${bs[0].title} to ${last.title}, with more to come.`; }
-const bookCh = (b, n) => ((b || 'gotm') === BOOK ? CHAPTERS : (BOOKSNAP[b] || BOOKSNAP.gotm).ch)[n];
+const bookCh = (b, n) => ((b || BOOK) === BOOK ? CHAPTERS : (BOOKSNAP[b] || BOOKSNAP[BOOK]).ch)[n];
 const rdUpT = n => ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'][n] || String(n);
-const chLabel = (e, book = true) => (book && BOOKS[e.book || 'gotm'] ? `Book ${BOOKS[e.book || 'gotm'].word} · ` : '') + (e.done ? 'Finished' : e.ch === 0 ? (e.book ? 'Starting out' : 'The prologue') : `Chapter ${bookCh(e.book, e.ch) ? bookCh(e.book, e.ch).number : e.ch}`) + (e.diff && DIFFS[e.diff] ? ` (${DIFFS[e.diff].name})` : '');
+const chLabel = (e, book = true) => (book && BOOKS[e.book || BOOK] ? `Book ${BOOKS[e.book || BOOK].word} · ` : '') + (e.done ? 'Finished' : e.ch === 0 ? (e.book ? 'Starting out' : 'The prologue') : `Chapter ${bookCh(e.book, e.ch) ? bookCh(e.book, e.ch).number : e.ch}`) + (e.diff && DIFFS[e.diff] ? ` (${DIFFS[e.diff].name})` : '');
 /* Book One sergeants who have finished the book: Book Two can bring their road along (47: dgImport) */
 /* iPhone and iPad keep each home-screen app's saves apart, so sergeants from Ashes of the Pale come across by save code (Ashes 4.9.2 offers
    one for each sergeant on its title). A fresh From the Ranks on an iPhone says so. */
 const IOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 /* the title wears the book played last (the roster's first row), Book One on a new device */
-const titleBookOf = list => { const b = list[0] && list[0].book; return b && BOOKS[b] ? b : 'gotm'; };
-function titleDress(b){ const B = BOOKS[b] || BOOKS.gotm;
+const titleBookOf = list => { const b = list[0] && list[0].book; return b && BOOKS[b] ? b : BOOK; };
+function titleDress(b){ const B = BOOKS[b] || BOOKS[BOOK];
   if (ARTON()) { const el = $('.titleart'); if (el && el.dataset.book !== b) { el.dataset.book = b; el.innerHTML = art(B.titleArt || 'title/key'); } }
   else { const old = $('#titlecv'); if (old && old.dataset.book !== b) { const cv = document.createElement('canvas'); cv.id = 'titlecv'; cv.setAttribute('aria-hidden', 'true'); cv.dataset.book = b; old.replaceWith(cv); startTitleBackdrop(cv, b); } }
   const tp = $('#tPatch'); if (tp && tp.dataset.book !== b) { tp.dataset.book = b; tp.innerHTML = art(B.patch || 'insignia/patch', tpatchCls(B.patch)); }
@@ -6702,7 +6738,7 @@ function coverSrc(key){ if (!ARTON() || !ART[key]) return '';
   if (!coverSrcs[key]) { const [w, h] = ART_SIZE[key] || [1600, 900]; coverSrcs[key] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(ART[key].replace('<svg ', `<svg width="${w}" height="${h}" `)); }
   return coverSrcs[key]; }
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-const onShelf = (e, b) => (e.book || 'gotm') === b;
+const onShelf = (e, b) => (e.book || BOOK) === b;
 function shelfHTML(list){
   return `<div class="shelf"><div class="rh">${list.length > 1 ? 'Choose a book: its sergeants, or a new one' : list.length ? 'A new sergeant? Choose your book' : 'Choose your book'}</div><div class="covers">${shelfBooks().map(B => {
     const n = list.filter(e => onShelf(e, B.id)).length, src = coverSrc(B.titleArt || 'title/key');
@@ -6722,7 +6758,7 @@ function showTitle(fresh, want){
   const taken = n => list.find(e => sameName(e.name, n));
   const iosNote = !list.length && IOS() ? `<p class="fine iosnote">Coming from Ashes of the Pale on this iPhone? On its title, tap your sergeant's name under <i>Copy a sergeant's code</i>, then tap <b>Load a backup or save code</b> here and paste it.</p>` : '';
   toTop(); $('#app').innerHTML = `${ARTON() ? `<div class="titleart" aria-hidden="true" data-book="${tb}">${art(TB.titleArt || 'title/key')}</div>` : ''}<canvas id="titlecv" aria-hidden="true" data-book="${tb}" ${ARTON() ? 'hidden' : ''}></canvas>${fullBtn('bFullT').replace('class="btn icon"', 'class="btn icon tfull"')}<div id="title" class="title">
-    <span id="tPatch" data-book="${tb}">${art(TB.patch || 'insignia/patch', tpatchCls(TB.patch))}</span><div class="series">From the Ranks</div><h1 id="tName">${TB.h1[0]}<span>${TB.h1[1]}</span></h1>
+    <span id="tPatch" data-book="${tb}">${art(TB.patch || 'insignia/patch', tpatchCls(TB.patch))}</span><div class="series">A Malazan fan game</div><h1 id="tName">${TB.h1[0]}<span>${TB.h1[1]}</span></h1>
     <p class="tag" id="tTag">${TB.tag}</p>
     ${form ? `<div class="field"><label>Book</label><div class="seg bseg">${Object.values(BOOKS).filter(b => !b.coming || b.id === tb).map(b => `<button class="btn ${b.id === tb ? 'on' : ''}" data-book="${b.id}">Book ${b.word}<small>${b.name}${b.coming ? ' · coming' : ''}</small></button>`).join('')}</div><small class="fine" id="bBlurb">${TB.blurb}</small></div>
     <div id="bookRows">${bookRows(tb)}</div>
@@ -6742,7 +6778,7 @@ function showTitle(fresh, want){
     : `${shelfHTML(list)}${iosNote}
     <div class="tbtns"><button class="btn" id="bImp">Load a backup or save code</button><button class="btn icon" id="bSet" aria-label="Settings">${GEAR}</button></div>`}
     <div id="instSlot"></div>
-    <p class="fine">From the Ranks: Malazan fan tales told by ordinary soldiers, for personal play. The world was created by Steven Erikson and Ian C. Esslemont, and it and its canon characters belong to them. ${titleCredit()} Sound on for the full effect. <button class="ver" id="bVer" aria-label="What's new in this version">v${VERSION}</button></p></div>`;
+    <p class="fine">Trygalle Run: an unofficial, non-commercial Malazan fan game, built on the From the Ranks engine. The world was created by Steven Erikson and Ian C. Esslemont, and it and its canon characters belong to them. ${titleCredit()} Sound on for the full effect. <button class="ver" id="bVer" aria-label="What's new in this version">v${VERSION}</button></p></div>`;
   if (!ARTON()) startTitleBackdrop($('#titlecv'), tb); else titleAnim = null;
   $('#bSet').onclick = () => { AUDIO.play('click'); openSettings(); };
   $('#bVer').onclick = () => { AUDIO.play('click'); openNotes(null); };
@@ -9581,7 +9617,7 @@ const NOTES = [
   ['3.7.3', ['The road from Pale is eleven days everywhere. The Moranth crate holds twelve cussers and the dud. The Phoenix is up the alley in the Daru District. Plus a sweep of Chapters 3 to 7.']],
   ['3.7.2', ['Maps and book beats: the Worry Gate, Rake and the Hounds in the hills, Coll on the slope, five dragons at the Fete, the Pannion Seer.']],
 ];
-const SEENKEY = 'from-the-ranks-seen';
+const SEENKEY = 'trygalle-run-seen';
 /* since = the version this player last saw: every note after it, newest first. From the title's version number or Settings
    (since null): the newest note, with every earlier one behind "Earlier versions". */
 function openNotes(since){
@@ -9608,7 +9644,7 @@ function maybeNotes(has){
    The only thing that survives that is a copy kept somewhere else: a backup file (every sergeant, the settings, the
    deeds seen) saved to the phone or sent on to Drive or mail, or a save code copied out. This file makes both easy
    and reminds the player when a backup is overdue. It never changes what a save holds. */
-const BKEY = 'from-the-ranks-backup'; // {at: ms, n: progress at that backup}
+const BKEY = 'trygalle-run-backup'; // {at: ms, n: progress at that backup}
 function backupMark(){ let m = null; try { m = JSON.parse(localStorage.getItem(BKEY)); } catch(e) {} return m && m.at ? m : null; }
 /* how far the device has come: every sergeant's chapter count. Three chapters past the last backup is overdue. */
 function backupProgress(list){ return (list || roster().list).reduce((n, e) => n + 1 + (e.ch || 0) + (e.done ? 1 : 0), 0); }
@@ -9628,7 +9664,7 @@ function backupFile(){ return new File([backupText()], backupName(), {type:'appl
 function downloadBackup(){ try { const f = backupFile(), u = URL.createObjectURL(f), a = document.createElement('a'); a.href = u; a.download = f.name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); markBackup(); return true; } catch(e) { return false; } }
 /* share: the phone's own share sheet (Drive, mail, Files, another device), where the browser has one that takes files */
 function canShareBackup(){ try { return !!(navigator.share && navigator.canShare && navigator.canShare({files:[new File(['x'], 'x.json', {type:'application/json'})]})); } catch(e) { return false; } }
-function shareBackup(){ try { return navigator.share({files:[backupFile()], title:'From the Ranks saves'}).then(() => { markBackup(); return true; }, () => false); } catch(e) { return Promise.resolve(false); } }
+function shareBackup(){ try { return navigator.share({files:[backupFile()], title:'Trygalle Run saves'}).then(() => { markBackup(); return true; }, () => false); } catch(e) { return Promise.resolve(false); } }
 /* restore: a backup file, or a single save code, or a single save pasted as text. Returns what it found, never writes. */
 function parseBackup(text){ const t = String(text || '').trim(); if (!t) return null; let o = null;
   try { o = JSON.parse(t); } catch(e) { try { o = JSON.parse(decodeURIComponent(escape(atob(t)))); } catch(e2) { return null; } }
@@ -9672,7 +9708,7 @@ function saveWorked(){ if (!saveBad) return; saveBad = false; const w = typeof d
 let oopsCount = 0; const oopsSeen = {};
 function crashText(msg, stack){ let where = 'title';
   try { if (S) where = `book ${S.book || 'gotm'}, chapter ${S.chapter}, ${view}${S.node ? ', page ' + S.node : ''}${B && B.id ? ', fight ' + B.id : ''}`; } catch(e) {}
-  return `From the Ranks v${VERSION}\n${where}\n${msg}\n${String(stack || '').split('\n').slice(0, 6).join('\n')}\n${typeof navigator !== 'undefined' ? navigator.userAgent : ''}`.trim(); }
+  return `Trygalle Run v${VERSION}\n${where}\n${msg}\n${String(stack || '').split('\n').slice(0, 6).join('\n')}\n${typeof navigator !== 'undefined' ? navigator.userAgent : ''}`.trim(); }
 function showOops(msg, stack){ msg = String(msg || 'Unknown error');
   if (/ResizeObserver loop|^Script error\.?$/.test(msg) || oopsSeen[msg] || oopsCount >= 3 || typeof document === 'undefined' || !document.body) return;
   oopsSeen[msg] = 1; oopsCount++;
@@ -11535,6 +11571,385 @@ function wearWords(g){ const it = ITEMS[g]; if (!it) return ''; if (gearRolesN !
 { const _se = startExplore; startExplore = function(){ try { gearTidy(); } catch(e) { console.warn('gearTidy', e); } return _se.apply(this, arguments); }; }
 { const _sb = startBattle; startBattle = function(){ try { gearTidy(); } catch(e) { console.warn('gearTidy', e); } return _sb.apply(this, arguments); }; }
 
+const DLG = {}; // the dialogue nodes; each chapter adds its own (registerChapter)
+
+/* ============ Trygalle Run: the book, the shareholders, a new charter ============
+   Trygalle Run is built on the From the Ranks engine (David, Nov 21, 2026). This file turns the engine's book shelf into one book,
+   'ttg', and replaces Book One's squad with the guild's shareholders. The player is still the engine's 'sgt' id: here the carriage's
+   captain, the shareholder who signs for the cargo. Battles are real time with pause (032_rt_battle.js), not the engine's rounds.
+   Fan work: the Malazan world and the Trygalle Trade Guild were created by Steven Erikson and Ian C. Esslemont. */
+
+/* one book on the shelf */
+Object.keys(BOOKS).forEach(k => delete BOOKS[k]);
+BOOKS.ttg = {id:'ttg', n:1, word:'One', title:'The Trygalle Trade Guild', name:'Trygalle Run', h1:['Trygalle', 'Run'],
+  squad:'the carriage', unit:'the carriage', tag:'The guild goes where no road goes. Five shareholders, one carriage, and a cargo someone will pay anything to have carried through the warrens.',
+  blurb:'Darujhistan, the Trygalle Trade Guild\'s house. A new captain, a first contract, and a road through a dead warren the guild calls the Ashway.'};
+BOOKSNAP.ttg = {ch:{}, end:{}, tease:{}};
+
+/* the shareholders. Fields follow the engine's TPL (014): the sheets, the talk lines and the portraits read them. */
+const TTG_SQUAD = ['sgt', 'tavos', 'mira', 'quill', 'ossel'];
+Object.assign(TPL.sgt, {role:'Shareholder · Captain of the carriage', epithet:'Trygalle Trade Guild, Darujhistan house', origin:'Darujhistan, the Daru District', age:36,
+  service:'Four runs as a shareholder. This is the first as captain.', height:'Middling. Stands like the carriage is still moving.',
+  weapon:'A guild sword with the trader\'s knot on the pommel, and a ledger', armour:'Brigandine under a guild coat that has been cleaned of things that should not stain',
+  bio:'Four runs through the warrens as a shareholder, and still alive, which in the guild is a qualification. The board has given you a carriage, a crew and a contract, and a share of whatever comes back.',
+  bio2:'You bought your first share with an inheritance nobody else in the family wanted to spend on anything so likely to end in a closed coffin. Every captain you rode under is either retired rich or dead. You have noticed that nobody retires poor.',
+  traits:['Counts the crates before the crew','Signs nothing without reading it twice','Has never once looked back through an open gate','Pays debts the day they fall due'],
+  gear:['The contract, sealed','A guild token that opens the yard gate','A share certificate, folded small']});
+Object.defineProperty(TPL.sgt, 'quest', {configurable:true, get(){ return 'Bring the carriage back with the crates sealed and the crew breathing. The board is watching your first run as captain.'; }});
+
+const TTG_TPL = {
+  tavos:{name:'Tavos', role:'Shareholder · Driver', sig:'D', col:'#c9a35a', hp:18, ac:13, atk:3, dmg:[1,6,1], rng:1, mv:5, init:2, st:{might:1, wits:3, guile:1}, ab:['salve'],
+    fig:'garrow', epithet:'Eleven runs. Still talks to the horses first.', origin:'Gadrobi Hills', age:47, service:'Eleven runs, all of them on the bench', height:'Short, broad, and bowed at the knee from the bench.',
+    weapon:'A long whip and a short knife', armour:'Oiled leather and a hat with a brim wide enough to hold rain',
+    bio:'The guild\'s oldest driver on this side of the lake. He has taken carriages through warrens with no ground, warrens with too much, and one that was all teeth. The horses trust him. Nobody else is sure he notices people.',
+    bio2:'He has eleven shares and will not sell one. Asked why, he says he is waiting for a twelfth. Asked what then, he says he will think about it.',
+    traits:['Names every horse after a dead captain','Never sits on anything that is not moving','Sleeps through anything but a change in the wheels','Laughs at weather'],
+    gear:['A tin of grease for the axles','Sugar for the horses','A string of eleven knotted cords'],
+    quest:'He has been promised the next carriage the guild builds. He would like it to have better springs.',
+    banter:['"Keep them off the horses, Captain. The crates I can replace."', '"Feel that? Ground\'s gone soft. We\'re close to a seam."', '"Eleven runs. You want to know the trick? Don\'t stop."'],
+    rel:{mira:'Calls her "the door." She lets him.', quill:'Shares the bench with her. Neither talks.', ossel:'Trusts his gates. Does not trust his face when he opens them.'}},
+  mira:{name:'Mira', role:'Shareholder · Warden', sig:'W', col:'#cfc6b4', hp:26, ac:16, atk:4, dmg:[1,8,2], rng:1, mv:4, init:0, st:{might:3, wits:1, guile:0}, ab:['salve'],
+    fig:'brisk', epithet:'Shield on her arm, a share in her boot.', origin:'Cawn, Quon Tali', age:31, service:'Seven runs. Two carriages lost under her, both crews home.', height:'Tall. The carriage door is shorter than she is.',
+    weapon:'Broad-bladed spear and a rimmed shield painted with the guild\'s knot', armour:'Scale over leather, and a helm she keeps on in the yard',
+    bio:'Came to the guild from a caravan company that paid her in promises. The guild pays in shares, and she has never been late collecting. She stands at the carriage door in every fight and nothing has come through it yet.',
+    bio2:'Her sister runs a bakery in the Gadrobi District that Mira\'s shares paid for. She has never told her sister what the guild does. Her sister thinks it is shipping.',
+    traits:['Checks the door hinges every morning','Will not ride inside','Eats standing up','Counts heads at every stop'],
+    gear:['A whetstone','A letter from her sister about flour prices','Spare shield straps'],
+    quest:'Seven shares. Ten buys out the debt on the bakery for good.',
+    banter:['"I\'ll take the door, Captain. You take the decisions."', '"Whatever comes, comes through me first. That\'s the job."', '"Seven runs and I still hate the smell of a warren opening."'],
+    rel:{tavos:'Covers his blind side without asking.', quill:'Calls her "the little hawk." Means it kindly.', ossel:'Stands between him and anything, whether he likes it or not.'}},
+  quill:{name:'Quill', role:'Shareholder · Marksman', sig:'M', col:'#8fb3a0', hp:14, ac:13, atk:5, dmg:[1,8,1], rng:5, mv:5, init:3, st:{might:0, wits:2, guile:3}, ab:['salve'],
+    fig:'ellis', epithet:'Rides the roof. Misses less than the rain.', origin:'Genabaris', age:23, service:'Three runs, all on the roof', height:'Slight. Folds up small on the roof rail.',
+    weapon:'A recurved horn bow and forty grey-fletched arrows', armour:'Quilted jacket, nothing that rings',
+    bio:'Youngest shareholder on the carriage and the best shot in the Darujhistan house. Says very little, and most of it about wind.',
+    bio2:'She bought her first share with a purse she will not explain. Tavos thinks she won it. Mira thinks she stole it. Ossel knows, and says nothing.',
+    traits:['Counts arrows before sleeping','Never misses twice','Climbs anything','Hums when she aims'],
+    gear:['Forty arrows','A wax tablet of wind notes','A ring on a cord'],
+    quest:'Wants her own carriage one day. Has already picked the horses.',
+    banter:['"Roof, Captain. I see more from there."', '"Wind\'s wrong in here. It blows from everywhere."', '"Point. I\'ll do the rest."'],
+    rel:{tavos:'Shares the bench and the silence.', mira:'Lets Mira fuss. Pretends not to.', ossel:'He taught her to watch the seams. She watches him instead.'}},
+  ossel:{name:'Ossel', role:'Shareholder · Seam-reader, the carriage\'s mage', sig:'O', col:'#a08de0', hp:13, ac:12, atk:3, dmg:[1,6,1], rng:4, mv:4, init:1, st:{might:0, wits:3, guile:2}, ab:['salve'], magic:true,
+    fig:'mammot', epithet:'Opens the gates. Holds them shut when it matters.', origin:'Pale, before Pale fell', age:61, service:'Twenty runs. More than any mage living in the house.', height:'Stooped, and getting more so.',
+    weapon:'A staff of black wood and the warrens themselves, carefully', armour:'A coat with too many pockets',
+    bio:'Every carriage needs a mage to open the way and close it after. Ossel has opened more gates than anyone in the house and believes, quietly, that he has used up most of his luck.',
+    bio2:'He was a scholar at Pale when the city still had scholars. He came south with a library in a handcart and sold it book by book to buy his first share. He still has the last book. He has not read it.',
+    traits:['Talks to the gate before opening it','Will not eat in a warren','Writes everything down','Is afraid of horses'],
+    gear:['The last book from Pale, unread','Chalk for drawing seams','A tin of ginger for the sickness'],
+    quest:'Twenty runs. The guild says a mage may retire at twenty-five. He would like to see what that looks like.',
+    banter:['"Every warren has a grain, Captain. Go with it and it lets you through."', '"The Ashway is dying. Dying things are restless."', '"I can hold it. Not long. Tell me when."'],
+    rel:{tavos:'Has never ridden up front. Will not start now.', mira:'She stands in front of him. He has stopped telling her not to.', quill:'Taught her the seams. She learned faster than he did.'}},
+};
+Object.assign(TPL, TTG_TPL);
+Object.keys(TTG_TPL).forEach(id => { STATUP[id] = id === 'mira' ? ['might', 'wits'] : ['wits', 'guile']; });
+STATUP.sgt = ['wits', 'might'];
+PORDER.length = 0; PORDER.push(...TTG_SQUAD);
+/* faces: the engine's portraits, worn by the shareholders until they have their own */
+Object.entries({tavos:'vell', mira:'brisk', quill:'ellis', ossel:'ohl'}).forEach(([id, look]) => { if (POR[look]) POR[id] = POR[look]; });
+
+/* level-3 talents: each one is read by the real-time battle (032) */
+Object.assign(PICKS[3], {
+  sgt:[['ttg_rally', 'Hold Together', 'Once a fight: every shareholder gets 4 grit back and strikes faster for 6 seconds.'], ['ttg_ledger', 'Count the Crates', 'Crates take 1 less from every blow.']],
+  tavos:[['ttg_whip', 'Whip Hand', 'With Tavos on the bench the carriage moves a third faster.'], ['ttg_steady', 'Steady Team', 'The horses never lurch, even with nobody on the bench.']],
+  mira:[['ttg_door', 'The Door', 'Shareholders beside Mira take 1 less from every blow.'], ['ttg_wall', 'Wall of One', '+2 armour, and nothing pushes her.']],
+  quill:[['ttg_roof', 'Roof Eye', '+1 range, +2 more on the carriage roof.'], ['ttg_quick', 'Quick Draw', 'Shoots a third faster.']],
+  ossel:[['ttg_anchor', 'Deep Anchor', 'His anchor holds drift still twice as long.'], ['ttg_ward', 'Seam Ward', 'Realm-fire does not burn shareholders standing next to him.']],
+});
+
+/* a new charter: the engine's new-game path calls newState(name) and then showIntro() (29); here both lead into Chapter One */
+const ftrNewState = newState;
+newState = function(name){
+  const s = ftrNewState(name);
+  s.book = 'ttg'; setBook('ttg');
+  s.squad = [...TTG_SQUAD]; s.loy = {}; TTG_SQUAD.forEach(id => { s.loy[id] = 0; s.gear[id] ??= {}; s.picks[id] ??= []; });
+  s.inv = {salve:2, sharper:0, burner:0, cusser:0, smoker:0};
+  s.silver = 40; s.shares = 1; s.area = 'ttg_yard'; s.scene = 'chintro';
+  return s;
+};
+showIntro = function(){ startChapter(1); };
+/* the guild's own words for the engine's sergeant */
+const TTG_WORDS = [[/\bSergeant\b/g, 'Captain'], [/\bsergeant\b/g, 'captain'], [/\bsergeants\b/g, 'captains'], [/\bSergeants\b/g, 'Captains'], [/Begin Book One/g, 'Take the first contract']];
+function ttgWords(root){
+  const w = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) { let t = n.nodeValue, o = t; TTG_WORDS.forEach(([re, rep]) => { t = t.replace(re, rep); }); if (t !== o) n.nodeValue = t; }
+  document.querySelectorAll('input[placeholder], button').forEach(el => { TTG_WORDS.forEach(([re, rep]) => { if (el.placeholder) el.placeholder = el.placeholder.replace(re, rep); }); });
+}
+new MutationObserver(() => { if (ttgWords.busy) return; ttgWords.busy = true; try { ttgWords(document.getElementById('app')); } finally { ttgWords.busy = false; } })
+  .observe(document.getElementById('app'), {childList:true, subtree:true, characterData:true});
+setBook('ttg');
+
+/* the shareholders wear FTR's figures: anywhere the engine draws a squadmate by id (the map, the backdrops), it gets their look */
+const TTG_FIG = {tavos:'garrow', mira:'brisk', quill:'ellis', ossel:'mammot'};
+{ const _drawFigure = drawFigure; drawFigure = function(ctx, kind, ...rest){ return _drawFigure.call(this, ctx, TTG_FIG[kind] || kind, ...rest); }; }
+
+/* ============ Trygalle Run, Chapter One: The Ashway ============
+   The first contract. The guild yard in Darujhistan (explore), the factor, the cargo, the mage's warning, then the run itself:
+   a real-time carriage battle through the Ashway (032). Ids carry a ttg_ prefix. Flags live in S.f.ttg_*. */
+
+const TTG_CARGO = {
+  spice:{name:'Spice', hp:6, value:60},
+  casket:{name:'Sealed casket', hp:5, value:100},
+  silk:{name:'Silk', hp:6, value:40},
+  salt:{name:'Salt', hp:8, value:25},
+};
+/* what the carriage carries out of the yard: the casket only if the captain signed for it */
+const ttgManifest = () => S.f.ttg_casket === 'refused' ? ['spice', 'salt', 'silk'] : ['spice', 'casket', 'silk'];
+
+const TTG_CH1 = {
+  title:'The Ashway', number:'One',
+  endCap:()=>'Morning in Darujhistan. The yard gate shut behind the carriage, and the board is counting what came back.',
+  endScene:'ttg_kan',
+  intro:{loc:'Darujhistan', sub:'The Trygalle Trade Guild\'s house · an hour before the gate', cap:'The guild yard under blue gaslight. One carriage is harnessed.',
+    scene:'ttg_yard',
+    paras:[
+`The board met at noon and gave you a carriage. Not a new one. Its last captain is on the list in the hall, three names from the bottom, and the shareholders who rode with her came back without her and without the cargo.`,
+`You are Captain {sgt}, shareholder of the Trygalle Trade Guild, and tonight you sign for your first contract. Four shareholders ride with you: Tavos on the bench, Mira at the door, Quill on the roof, and Ossel, who will open the gate and, if all goes well, close it again behind you.`,
+`The factor is waiting in the counting-room with the manifest. The horses are already nervous. Tavos says that is a good sign. Nobody believes him.`],
+    go:'Walk the yard', node:'ttg_c1_start'},
+
+  /* 16 x 12. # wall  . yard  , straw  = stable stalls  W the carriage (Tavos)  C counting-room door (the factor)  F the shareholders' fire
+     x hitching post  8 crates waiting to load */
+  area:{id:'ttg_yard', title:'The guild yard · Darujhistan', sub:'Counting-room north · the carriage by the gate', decor:'city_night',
+    hint:'Tap ground to move · tap a figure to talk',
+    map:[ "################",
+          "#....C.........#",
+          "#..............#",
+          "#=.=.=....8.8..#",
+          "#,,,,,.........#",
+          "#..........x.x.#",
+          "#......F.......#",
+          "#..............#",
+          "#.........W....#",
+          "#..,...........#",
+          "#.....,....,...#",
+          "################" ],
+    walk:'.,', triggers:{C:'ttg_c1_factor', W:'ttg_c1_carriage'},
+    start:{x:7, y:8},
+    folk:[{x:2, y:4, kind:'b2soldier', name:'A stable hand', line:'They know. Horses always know when it\'s a warren run. Look at their ears.', wander:1},
+          {x:12, y:2, kind:'guard', name:'The yard guard', line:'Gate opens at the bell. After that it\'s Ossel\'s gate, not mine.'}],
+    npcs:[
+      {id:'ressel', name:'Factor Ressel', kind:'pell', x:5, y:2, node:()=>S.f.ttg_manifest ? 'ttg_c1_factor_again' : 'ttg_c1_factor', fresh:()=>!S.f.ttg_manifest},
+      {id:'ossel', name:'Ossel', kind:'ossel', x:8, y:6, node:()=>'ttg_c1_ossel', fresh:()=>!S.f.ttg_ossel},
+      {id:'mira', name:'Mira', kind:'mira', x:9, y:8, node:()=>'ttg_c1_mira', fresh:()=>!S.f.ttg_mira},
+      {id:'quill', name:'Quill', kind:'quill', x:12, y:7, node:()=>'ttg_c1_quill', fresh:()=>!S.f.ttg_quill},
+    ],
+    quest:()=>!S.f.ttg_manifest ? 'Sign for the cargo in the counting-room' : 'Take the carriage out through the Ashway'},
+
+  battles:{
+    ttg_ashway:{rt:true, title:'The Ashway', sub:'A dead warren between Darujhistan and the Kanese coast', style:'plain_dusk', music:'battle', xp:120, after:'ttg_c1_through',
+      /* logical map: x runs forward along the road, y across it. 20 x 12. # standing rock  . ground  , ash  ~ the road */
+      map:[ "....#.........#.....",
+            "..#......#.........#",
+            "......#.......#.....",
+            ".#..........#.......",
+            "....................",
+            "~~~~~~~~~~~~~~~~~~~~",
+            "~~~~~~~~~~~~~~~~~~~~",
+            "....................",
+            "..#.....#......#....",
+            ".......#....#.......",
+            "...#..........#..#..",
+            "#........#.........#" ],
+      carriage:{x:1, y:5}, party:{tavos:'seat0', ossel:'seat2', sgt:[2, 4], mira:[2, 7], quill:[0, 4]},
+      foes:[['ashhound', 12, 1], ['ashhound', 14, 10], ['ashhound', 18, 9], ['gaunt', 17, 2], ['gaunt', 9, 11], ['gaunt', 6, 0]],
+      drift:{every:3.4, shifts:{4:{kind:'ash', count:30, wave:['ashhound', 'ashhound', 'ashhound', 'gaunt', 'gaunt', 'gaunt'], say:'The ground crumbles to ash. Crossing ash is slow, and more of them come.'},
+                                8:{kind:'fire', count:16, wave:['ashhound', 'ashhound', 'ashhound', 'gaunt', 'gaunt', 'gaunt', 'gaunt'], say:'Fire bleeds out of the sky. Standing in it burns. A larger pack arrives.'}}},
+      cargo:()=>ttgManifest()},
+  },
+  foes:{
+    ashhound:{name:'Ash-hound', sig:'h', fig:'hound', hp:9, ac:12, atk:3, dmg:[1,6,1], rng:1, speed:3.2, cd:1.6, verb:'bites'},
+    gaunt:{name:'Gaunt', sig:'g', fig:'wight', hp:12, ac:11, atk:2, dmg:[1,6,0], rng:1, speed:1.8, cd:2.2, verb:'claws', cargo:true},
+  },
+
+  dlg:{
+    /* ---- opening ---- */
+    ttg_c1_start:()=>({sp:'The guild yard', scene:'ttg_yard', txt:
+`The yard smells of horses and lamp oil. The carriage stands by the gate with its doors open, black lacquer worn grey at every edge a hand has held, and the guild's knot painted fresh on the door. Somebody has painted over the old captain's name on the bench. Not well.
+
+Tavos is already on the bench, talking to the horses. Mira stands at the door as if it might leave without her. Quill is on the roof. Ossel sits by the fire with his staff across his knees and his eyes shut.
+
+The counting-room lamp is lit. The factor does not like to wait.`,
+      ch:[{t:'Walk the yard.', go:()=>startExplore()},
+          {t:'Go straight to the counting-room.', go:'ttg_c1_factor'}]}),
+
+    /* ---- the factor and the manifest ---- */
+    ttg_c1_factor:()=>({sp:'Factor Ressel · counting-room', scene:'ttg_counting', txt:
+`Factor Ressel is a narrow man behind a wide desk. The manifest is already written out, and he turns it round so you can read it without picking it up.
+
+"Spice for a house in Kan. Silk for the same buyer. And this." He sets a hand on a small iron-bound casket at his elbow, the way a man rests his hand on a dog he is not sure of. "Sealed. A hundred in coin to the guild on delivery, unopened. The buyer was very clear about unopened."
+
+"Your share is on the bottom line. Sign, Captain, and the gate opens at the bell."`,
+      ch:[{t:'Look at the casket before you sign.', check:['wits', 12], edges:id => [id === 'ossel' && ['a seam-reader feels what is shut in', 2]], go:'ttg_c1_casket_read', fail:'ttg_c1_casket_miss', req:()=>!S.f.ttg_casketLooked, fx:()=>{ S.f.ttg_casketLooked = 1; }},
+          {t:'Sign for all three.', fx:()=>{ S.f.ttg_casket = 'signed'; S.f.ttg_manifest = 1; }, go:'ttg_c1_signed'},
+          {t:'Sign for the spice and silk. Leave the casket, and take a crate of salt for weight.', fx:()=>{ S.f.ttg_casket = 'refused'; S.f.ttg_manifest = 1; }, go:'ttg_c1_refused'}]}),
+    ttg_c1_casket_read:()=>({sp:'The casket', txt:
+`{who} puts a palm flat on the lid. It is warm. Not warm like a thing left by the fire. Warm like a thing that has been breathing.
+
+"Whatever's in there," {who} says quietly, "it knows we're looking."
+
+Ressel's face does not change. "Unopened," he says again. "A hundred in coin."
+
+You know now why the buyer paid the guild and not a caravan: a caravan would have opened it. And you know something on the road will want it.`,
+      fx:()=>{ S.f.ttg_casketKnown = 1; },
+      ch:[{t:'Sign for all three. The Ashway can try.', fx:()=>{ S.f.ttg_casket = 'signed'; S.f.ttg_manifest = 1; }, go:'ttg_c1_signed'},
+          {t:'Leave the casket. Take salt for weight.', fx:()=>{ S.f.ttg_casket = 'refused'; S.f.ttg_manifest = 1; }, go:'ttg_c1_refused'}]}),
+    ttg_c1_casket_miss:()=>({sp:'The casket', txt:
+`Iron bands, a wax seal pressed with a mark you do not know, and a lid that does not quite sit flat. It is a box. It is heavier than it looks. That is all you can tell.
+
+"Unopened," says Ressel. "A hundred in coin."`,
+      ch:[{t:'Sign for all three.', fx:()=>{ S.f.ttg_casket = 'signed'; S.f.ttg_manifest = 1; }, go:'ttg_c1_signed'},
+          {t:'Leave the casket. Take salt for weight.', fx:()=>{ S.f.ttg_casket = 'refused'; S.f.ttg_manifest = 1; }, go:'ttg_c1_refused'}]}),
+    ttg_c1_signed:()=>({sp:'Factor Ressel', txt:
+`You sign. Ressel sands the ink and blows on it, and for the first time looks pleased.
+
+"Spice, silk and the casket, Captain. Two hundred in coin to the guild if all three arrive. The casket rides inside, on the floor, where Mira can see it."
+
+When you look back from the door he has his hand on the casket again, and he is not looking at you.`,
+      ch:[{t:'Back to the yard.', go:()=>startExplore()}]}),
+    ttg_c1_refused:()=>({sp:'Factor Ressel', txt:
+`Ressel's pen stops above the page. "The board will hear you refused a hundred in coin on your first run."
+
+"The board will hear I came back," you say.
+
+He writes it down. Salt in place of the casket: worth a quarter as much, and twice as hard to break. Nobody on the road will want it. That is the point.`,
+      ch:[{t:'Back to the yard.', go:()=>startExplore()}]}),
+    ttg_c1_factor_again:()=>({sp:'Factor Ressel', txt:`"The manifest is signed, Captain. The bell will not wait for you."`,
+      ch:[{t:'Back to the yard.', go:()=>startExplore()}]}),
+
+    /* ---- the shareholders ---- */
+    ttg_c1_ossel:()=>({sp:'Ossel · the carriage\'s mage', scene:'ttg_fire', fx:()=>{ S.f.ttg_ossel = 1; }, txt:
+`Ossel opens his eyes before you reach the fire. "The Ashway," he says. "Not the road I would choose. Not the road anyone would choose. That is why the buyer pays the guild."
+
+"It was a warren once. Something burned it, a long time ago, and it is still burning, slowly, from the edges in. The longer we stay, the more of it goes. First ash. Then fire. I can hold it still for a little while. Not long. Tell me when."`,
+      ch:[{t:'"How long do we have before it turns?"', check:['wits', 12], edges:id => [id === 'ossel' && ['he has read this seam before', 3]], go:'ttg_c1_ossel_read', fail:'ttg_c1_ossel_miss', req:()=>!S.f.ttg_drift},
+          {t:'"Ride inside. Keep your strength for the gate."', req:()=>!S.f.ttg_osselIn, fx:()=>{ S.f.ttg_osselIn = 1; loy('ossel', 1); }, go:'ttg_c1_ossel_in'},
+          {t:'Leave him to the fire.', go:()=>startExplore()}]}),
+    ttg_c1_ossel_read:()=>({sp:'Ossel', fx:()=>{ S.f.ttg_drift = 'known'; }, txt:
+`You sit with him and he draws the seam in chalk on a flagstone: a line, then a ragged edge, then a second edge inside the first.
+
+"Here we are safe. Here it goes to ash: slow ground, and things come up out of it. Here the fire. Count to thirty after the gate, and again." He looks up. "And save my anchor for the fire. Ash you can walk through."
+
+When the fight comes, you will know when the realm is about to shift, and Ossel will have his anchor ready from the start.`,
+      ch:[{t:'Back to the yard.', go:()=>startExplore()}]}),
+    ttg_c1_ossel_miss:()=>({sp:'Ossel', fx:()=>{ S.f.ttg_drift = 'guess'; }, txt:
+`He starts to draw the seam in chalk and then stops, and rubs it out with his sleeve. "It changes. Every time. Count slowly, Captain, and listen for the ground."`,
+      ch:[{t:'Back to the yard.', go:()=>startExplore()}]}),
+    ttg_c1_ossel_in:()=>({sp:'Ossel', txt:`"Inside." He nods slowly. "The rear hatch. I can see the seams from there, and Mira can see me." For a moment he looks almost relieved.`,
+      ch:[{t:'Back to the yard.', go:()=>startExplore()}]}),
+    ttg_c1_mira:()=>({sp:'Mira · at the carriage door', fx:()=>{ S.f.ttg_mira = 1; }, txt:
+`"Door's sound. Hinges oiled. Wheels greased. Tavos has told the horses about you." She does not smile, but it is close. "Last captain liked to ride inside and give orders through the window. I'd rather you didn't."
+
+"In the Ashway, the things that come for the crates are slow. The things that come for people are not. Tell me which to stand in front of, and I'll stand there."`,
+      ch:[{t:'"Stand in front of the crates. People can run."', fx:()=>{ S.f.ttg_miraPlan = 'crates'; loy('mira', 1); }, go:'ttg_c1_mira_ok'},
+          {t:'"Stand in front of Ossel. Without him we never get out."', fx:()=>{ S.f.ttg_miraPlan = 'ossel'; }, go:'ttg_c1_mira_ok'}]}),
+    ttg_c1_mira_ok:()=>({sp:'Mira', txt:`"Done." She raps the carriage door twice with her knuckles, the way some people touch wood.`,
+      ch:[{t:'Back to the yard.', go:()=>startExplore()}]}),
+    ttg_c1_quill:()=>({sp:'Quill · on the roof', fx:()=>{ S.f.ttg_quill = 1; }, txt:
+`Quill hangs her head over the edge of the roof. "Forty arrows," she says. "Hounds go down in two. The slow ones take four. I can't carry more without sitting on them."
+
+She pulls herself back up. A moment later her voice comes down again. "Put me on the roof and leave me there, Captain. I see the whole road from up here."`,
+      ch:[{t:'Back to the yard.', go:()=>startExplore()}]}),
+
+    /* ---- the carriage and the gate ---- */
+    ttg_c1_carriage:()=> !S.f.ttg_manifest ? ({sp:'Tavos · on the bench', txt:`"Can't go without a manifest, Captain. Ressel would have the horses."`,
+      ch:[{t:'Back to the yard.', go:()=>startExplore()}]})
+      : ({sp:'Tavos · on the bench', txt:
+`The bell is ringing. Tavos gathers the reins. Mira is at the door, Quill on the roof. Ossel walks to the yard gate, and the air beyond it is the wrong colour.
+
+"Captain," Tavos says. "Once he opens it, we don't stop. Not for anything. You want to say something to them, say it now."`,
+      ch:[{t:'"Shares out at the far side. All of us."', fx:()=>{ ['tavos', 'mira', 'quill', 'ossel'].forEach(id => loy(id, 1)); }, go:'ttg_c1_gate'},
+          {t:'"Mind the crates. The board is counting."', go:'ttg_c1_gate'},
+          {t:'"Not yet."', go:()=>startExplore()}]}),
+    ttg_c1_gate:()=>({sp:'The gate', scene:'ttg_gate', txt:
+`Ossel puts both hands on the air and pulls, the way a man opens a heavy curtain, and the yard gate is not a gate any more. Beyond it: grey ground to the horizon, standing stones like broken teeth, and a sky the colour of old coals.
+
+Tavos snaps the reins. The carriage goes through.
+
+Behind you the gate shuts. Ahead, low shapes are already moving between the stones.`,
+      ch:[{t:'Into the Ashway.', go:()=>startBattle('ttg_ashway')}]}),
+    ttg_c1_through:()=>({sp:'The far side', scene:'ttg_kan', txt:
+`The far gate opens on a cobbled yard in Kan, wet with real rain. The horses stand blowing in the traces. Tavos is laughing at the weather.
+
+${S.f.ttg_cratesLeft === 3 ? 'Every crate is sealed. The buyer\'s clerk counts them twice, and then once more, and signs.' : S.f.ttg_cratesLeft ? `${S.f.ttg_cratesLeft} of three crates come off the carriage whole. The clerk writes the rest down as losses, without comment, and signs for what is left.` : 'Nothing comes off the carriage whole.'}
+${S.f.ttg_casket === 'signed' ? (S.f.ttg_casketSafe ? 'The casket goes into the buyer\'s hands unopened. He holds it like a man holding a live coal, and pays.' : 'The casket did not survive the road. Nobody wants to say what came out of it, or where it went.') : ''}
+
+${S.f.ttg_lost ? `Not everyone came through. ${S.f.ttg_lost} stayed in the Ashway.` : 'Everyone who went in came out.'}`,
+      ch:[{t:'Count the shares.', go:()=>chapterEnd(1, S.f.ttg_cratesLeft === 3 ? 'clean' : S.f.ttg_cratesLeft ? 'partial' : 'lost')}]}),
+  },
+
+  end:{
+    clean:['Delivered whole', 'Every crate came off the carriage sealed. The board will say a first run is luck. The shareholders who rode with you are already saying something else.'],
+    partial:['Delivered, with losses', 'The guild has paid for worse first runs. The board will read the manifest and the losses line, and they will remember both.'],
+    lost:['Nothing delivered', 'The carriage came back and the crew came back. The cargo did not. The guild pays nothing for that, and says so.'],
+  },
+  tease:'Next: the board reads the manifest, and a second contract comes with a name nobody in the house wants to say.',
+};
+/* in the yard Tavos is on the bench already (the carriage, W), not walking behind the captain */
+AWAY.push(k => k === 'tavos' && S && S.area === 'ttg_yard');
+
+/* ============ Trygalle Run: backdrops for talk nodes ============
+   SCENEX[kind](canvas, t), drawn with FTR's helpers (sceneFit, glow, ell, poly, drawFigure). */
+Object.assign(SCENES, {
+  ttg_yard:{loc:'The guild yard', sub:'Darujhistan · the Trygalle Trade Guild', cap:'Blue gaslight on wet cobbles, one carriage in its traces, and the horses already sweating.', amb:'explore'},
+  ttg_counting:{loc:'The counting-room', sub:'The guild house · Darujhistan', cap:'Ledgers to the ceiling, one lamp, and a casket nobody wants to touch.', amb:'explore'},
+  ttg_fire:{loc:'The shareholders\' fire', sub:'The guild yard', cap:'A brazier by the stable wall. The old mage sits closest, and never seems warm.', amb:'explore'},
+  ttg_gate:{loc:'The yard gate', sub:'Ossel\'s gate', cap:'The gate is still a gate, and then it is not.', amb:'explore', warren:1},
+  ttg_kan:{loc:'Kan', sub:'The buyer\'s yard · the far side', cap:'Real rain, real stone, and a clerk with a ledger under an oilcloth.', amb:'explore'},
+});
+/* a side view of the carriage and its two horses, facing right, wheels on the ground line y */
+function ttgCarriageSide(ctx, x, y, s, t, moving){
+  const bob = moving ? Math.sin(t / 90) * 1.2 : 0;
+  // horses
+  [0, 9].forEach((o, i) => { const hx = x + 70*s + o*s, hy = y - 22*s + (i ? bob : -bob);
+    ctx.fillStyle = i ? '#3a2418' : '#2c1c12'; ctx.beginPath(); ctx.ellipse(hx + 12*s, hy, 14*s, 7*s, 0, 0, 7); ctx.fill();
+    poly(ctx, [[hx + 22*s, hy - 3*s], [hx + 30*s, hy - 16*s], [hx + 35*s, hy - 13*s], [hx + 28*s, hy + 1*s]], ctx.fillStyle);
+    ctx.fillRect(hx + 2*s, hy + 4*s, 2.4*s, 18*s); ctx.fillRect(hx + 20*s, hy + 4*s, 2.4*s, 18*s); });
+  // traces
+  ctx.strokeStyle = '#1a120c'; ctx.lineWidth = 1.2*s; ctx.beginPath(); ctx.moveTo(x + 62*s, y - 18*s); ctx.lineTo(x + 80*s, y - 22*s); ctx.stroke();
+  // body
+  const g = ctx.createLinearGradient(0, y - 52*s, 0, y - 10*s); g.addColorStop(0, '#2e2622'); g.addColorStop(1, '#120e0c'); ctx.fillStyle = g;
+  ctx.fillRect(x, y - 50*s, 60*s, 36*s); ctx.strokeStyle = '#8a6a32'; ctx.lineWidth = 1.2*s; ctx.strokeRect(x, y - 50*s, 60*s, 36*s);
+  ctx.fillStyle = '#4a3622'; ctx.fillRect(x + 56*s, y - 36*s, 12*s, 3*s); // the bench
+  ctx.fillStyle = 'rgba(255,190,110,.18)'; ctx.fillRect(x + 22*s, y - 44*s, 14*s, 12*s); // the door window
+  ctx.strokeStyle = 'rgba(232,192,115,.75)'; ctx.lineWidth = 1*s; ctx.beginPath(); ctx.arc(x + 26*s, y - 24*s, 3.2*s, 0, 7); ctx.arc(x + 31*s, y - 24*s, 3.2*s, 0, 7); ctx.stroke(); // the guild's knot
+  ctx.fillStyle = '#5a4630'; ctx.fillRect(x + 4*s, y - 58*s, 16*s, 8*s); ctx.fillRect(x + 24*s, y - 56*s, 12*s, 6*s); // crates lashed on the roof
+  [[12, 0], [50, 0]].forEach(([wx]) => { ctx.strokeStyle = '#17120e'; ctx.lineWidth = 2.4*s; ctx.beginPath(); ctx.arc(x + wx*s, y - 9*s, 9*s, 0, 7); ctx.stroke();
+    ctx.lineWidth = 1*s; for (let k = 0; k < 4; k++) { const a = k * Math.PI / 4 + (moving ? t / 300 : 0); ctx.beginPath(); ctx.moveTo(x + wx*s - Math.cos(a)*9*s, y - 9*s - Math.sin(a)*9*s); ctx.lineTo(x + wx*s + Math.cos(a)*9*s, y - 9*s + Math.sin(a)*9*s); ctx.stroke(); } });
+}
+function ttgNight(ctx, W, H, t, opt = {}){
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, opt.dawn ? '#3a4048' : '#070a14'); g.addColorStop(1, opt.dawn ? '#1c1e22' : '#0b0c10'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  if (!opt.dawn) for (let i = 0; i < 40; i++) { ctx.fillStyle = `rgba(255,255,255,${.2 + hash(i, 5) * .5})`; ctx.fillRect(hash(i, 1) * W, hash(i, 2) * H * .4, 1, 1); }
+  // the guild house wall and its lamps
+  ctx.fillStyle = opt.dawn ? '#24262a' : '#141218'; ctx.fillRect(0, H * .28, W, H * .44);
+  for (let i = 0; i < 9; i++) { ctx.fillStyle = opt.dawn ? '#2c2e33' : '#1a1820'; ctx.fillRect(i * W / 8 - 6, H * .28, 12, H * .44); }
+  if (!opt.dawn) [.12, .46, .8].forEach((k, i) => { const x = W * k; ctx.fillStyle = '#222'; ctx.fillRect(x - 1, H * .3, 2, H * .4); glow(ctx, x, H * .3, 46, '#6aa0ff', .45 + Math.sin(t / 700 + i) * .05); ell(ctx, x, H * .3, 4, 5, '#bcd4ff'); });
+  // cobbles
+  const cg = ctx.createLinearGradient(0, H * .72, 0, H); cg.addColorStop(0, opt.dawn ? '#2a2a2c' : '#121218'); cg.addColorStop(1, opt.dawn ? '#1a1a1c' : '#08080a'); ctx.fillStyle = cg; ctx.fillRect(0, H * .72, W, H * .28);
+  ctx.strokeStyle = 'rgba(255,255,255,.05)'; for (let i = 0; i < 60; i++) { ctx.beginPath(); ctx.ellipse(hash(i, 7) * W, H * .74 + hash(i, 8) * H * .26, 9, 3, 0, 0, 7); ctx.stroke(); }
+}
+SCENEX.ttg_yard = (cv, t) => { const {ctx, W, H} = sceneFit(cv); ttgNight(ctx, W, H, t); ttgCarriageSide(ctx, W * .5, H * .9, 1.3, t, false);
+  drawFigure(ctx, 'sgt', W * .22, H * .95, 1.9, t, {dir:1}); drawFigure(ctx, 'mira', W * .44, H * .93, 1.7, t, {dir:1, phase:2}); };
+SCENEX.ttg_counting = (cv, t) => { const {ctx, W, H} = sceneFit(cv), fl = .85 + Math.sin(t / 110) * .06;
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1e1610'); g.addColorStop(1, '#0c0806'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < 14; i++) { const x = i * W / 13; ctx.fillStyle = '#140e0a'; ctx.fillRect(x, 0, 3, H * .62); } // panelling
+  for (let r = 0; r < 4; r++) for (let i = 0; i < 18; i++) { if (hash(i, r) < .2) continue; ctx.fillStyle = ['#3a2a1c', '#2a3a2a', '#4a2a22', '#2c2a3a'][(i + r) % 4]; ctx.fillRect(W * .62 + i * 9, H * (.08 + r * .13), 7, H * .1); } // ledgers on the shelves
+  drawFigure(ctx, 'pell', W * .5, H * .66, 2, t, {dir:-1, still:true}); // the factor, behind the desk
+  ctx.fillStyle = '#3e2c1c'; ctx.fillRect(W * .24, H * .62, W * .52, H * .08); ctx.fillStyle = '#26180e'; ctx.fillRect(W * .28, H * .7, W * .44, H * .3);
+  ctx.fillStyle = '#e6dac2'; ctx.fillRect(W * .38, H * .595, 34, 6); ctx.fillStyle = '#3a3a40'; ctx.fillRect(W * .6, H * .55, 20, 12); ctx.strokeStyle = '#9c9cae'; ctx.lineWidth = 1; ctx.strokeRect(W * .6, H * .55, 20, 12); // manifest, casket
+  glow(ctx, W * .3, H * .52, W * .4, '#ffb060', .42 * fl); ell(ctx, W * .3, H * .57, 3, 7, '#e8d8a8'); poly(ctx, [[W * .3 - 2, H * .53], [W * .3 + 2, H * .53], [W * .3 + Math.sin(t / 90), H * .53 - 9 * fl]], '#fff1c2');
+  drawFigure(ctx, 'sgt', W * .16, H * .97, 2.1, t, {dir:1}); };
+SCENEX.ttg_fire = (cv, t) => { const {ctx, W, H} = sceneFit(cv), fl = .8 + Math.sin(t / 90) * .1 + Math.sin(t / 37) * .05; ttgNight(ctx, W, H, t);
+  glow(ctx, W * .5, H * .78, W * .4, '#ff8a3a', .5 * fl); ctx.fillStyle = '#2a2420'; ctx.fillRect(W * .5 - 14, H * .8, 28, 12);
+  for (let i = 0; i < 5; i++) poly(ctx, [[W * .5 - 12 + i * 6, H * .8], [W * .5 - 8 + i * 6, H * .8], [W * .5 - 10 + i * 6 + Math.sin(t / 80 + i) * 3, H * .8 - (10 + hash(i, 9) * 10) * fl]], i % 2 ? '#ffb04a' : '#ff7a2a');
+  drawFigure(ctx, 'ossel', W * .64, H * .95, 1.9, t, {dir:-1, still:true}); drawFigure(ctx, 'sgt', W * .3, H * .97, 2, t, {dir:1}); };
+SCENEX.ttg_gate = (cv, t) => { const {ctx, W, H} = sceneFit(cv); ttgNight(ctx, W, H, t);
+  const cx = W * .74, r = H * .34 * (1 + Math.sin(t / 400) * .03); glow(ctx, cx, H * .55, r * 1.6, '#9a86e0', .55); ctx.fillStyle = '#3a3438'; ctx.beginPath(); ctx.ellipse(cx, H * .55, r * .55, r, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#c9bbff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, H * .55, r * .55, r, 0, 0, 7); ctx.stroke();
+  for (let i = 0; i < 6; i++) { ctx.fillStyle = '#1a1614'; ctx.fillRect(cx - r * .4 + i * r * .14, H * .55 + r * .2 - hash(i, 3) * r * .5, 4, hash(i, 3) * r * .5); } // standing stones beyond
+  ttgCarriageSide(ctx, W * .3, H * .9, 1.2, t, true); drawFigure(ctx, 'ossel', W * .6, H * .95, 1.8, t, {dir:1}); };
+SCENEX.ttg_kan = (cv, t) => { const {ctx, W, H} = sceneFit(cv); ttgNight(ctx, W, H, t, {dawn:true}); ttgCarriageSide(ctx, W * .56, H * .9, 1.25, t, false);
+  const sq = SQUAD().filter(id => id !== 'tavos'); sq.forEach((id, i) => drawFigure(ctx, id, W * .12 + i * 34, H * .96 - (i % 2) * 3, 1.7, t, {dir:1, phase:i}));
+  ctx.strokeStyle = 'rgba(190,200,215,.35)'; ctx.lineWidth = 1; for (let i = 0; i < 90; i++) { const x = (hash(i, 1) * W + t * .12) % W, y = (hash(i, 2) * H + t * .5) % H; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 2, y + 9); ctx.stroke(); } };
+
 /* ============ v13.4 toughness reset (David, Nov 12-13, 2026; series-polish-plan.md §0c.1) ============
    Books One to Five drop an ordinary soldier in about six good hits; from Book Six it drifted, and Books Eight to Ten were fights against
    four or five 200-health sponges, which is why munitions, pushback and the Whisper faded there. David chose "B, plus A for the tiny fights":
@@ -12805,6 +13220,514 @@ function townArt(ctx, map, cols, rows, T, dark, style){
     try { const {bctx, T} = G; if (!bctx || !townArtOn(style)) return; townArt(bctx, map, cols, rows, T, dark, style); } catch (e) { console.warn('town art', e); } };
   prerender.base = _prerender.base || _prerender; }
 
+/* ============ the real-time carriage battle (Trygalle Run) ============
+   A battle def with rt:true runs here instead of FTR's turn-based 031. Real time with pause: a fixed 30 Hz simulation on a
+   seeded RNG, auto-pause on wounds, a shareholder going down, a crate hit and every drift shift. The carriage (3 long, 2 wide)
+   rolls along the road on its own clock; the crew fight round it, ride on its seats, and must be on it or near it when it
+   crosses out of the warren. Drawn with FTR's tiles (drawTile via prerender) and figures (drawFigure).
+   Logical grid: x runs forward along the road, y across it. A phone held upright turns the map so the road runs up the screen.
+   Test hook: window.__rt (state, update, orders, finish). */
+const RT = (() => {
+  const STEP = 1 / 30, CW = 3, CHH = 2, DRIFT_MAX = 12, ESCAPE_RANGE = 2, ROOF_BONUS = 2, RAM = 2, LURCH = .3, DOWN_AT = 3;
+  const PERIOD_DRIVER = 1.9, PERIOD_LOOSE = 2.6;
+  const SEATS = [{x:2, y:0, name:'driver\'s bench'}, {x:1, y:0, name:'roof'}, {x:0, y:1, name:'rear hatch'}];
+  const CRATE_CELLS = [[0, 0], [1, 1], [2, 1]];
+  const GROUND = 0, ROCK = 1, ASH = 2, FIRE = 3;
+  const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const WOUNDS = ['broken arm', 'gashed leg', 'cracked ribs', 'shaken nerve', 'burned hands'];
+  /* each shareholder's part in a real-time fight: grit soaks blows before they wound, cd is seconds between strikes, speed is tiles a second */
+  const ROLE = {
+    sgt:  {label:'Captain',  grit:6, atk:3, range:1, cd:1.2, speed:2.6, skill:'rally'},
+    tavos:{label:'Driver',   grit:4, atk:2, range:1, cd:1.2, speed:3.0, skill:'whip', driver:true},
+    mira: {label:'Warden',   grit:7, atk:3, range:1, cd:1.2, speed:2.4, skill:'brace'},
+    quill:{label:'Marksman', grit:3, atk:3, range:4, cd:1.8, speed:2.8, skill:'volley', roof:true},
+    ossel:{label:'Mage',     grit:3, atk:2, range:4, cd:2.2, speed:2.2, skill:'anchor', magic:true},
+  };
+  const SKILL = {
+    rally: {name:'Rally', desc:'Shareholders within 3 tiles get grit back.', uses:1},
+    whip:  {name:'Whip', desc:'From the bench: the carriage lunges forward and runs faster for 4 seconds.', cd:20},
+    brace: {name:'Brace', desc:'For 6 seconds, Mira and anyone beside her take half damage.', cd:16},
+    volley:{name:'Volley', desc:'One arrow into every enemy in range.', cd:14},
+    anchor:{name:'Anchor', desc:'Holds the drift still for 8 seconds.', uses:1},
+  };
+  const pick = (id, k) => { try { return typeof has === 'function' && has(id, k); } catch (e) { return false; } };
+  const prefs = {auto:true, speed:1};
+  try { const p = JSON.parse(localStorage.getItem('ttg-rt') || '{}'); if (typeof p.auto === 'boolean') prefs.auto = p.auto; if (p.speed === 1 || p.speed === 2) prefs.speed = p.speed; } catch (e) {}
+  const savePrefs = () => { try { localStorage.setItem('ttg-rt', JSON.stringify(prefs)); } catch (e) {} };
+  function mulberry32(a){ return function(){ a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+  let R = null; // the fight
+  const W = () => R.w, H = () => R.h;
+
+  /* ---------------- set-up ---------------- */
+  function begin(id, def, opt){
+    const seed = opt.seed != null ? opt.seed : Math.floor(Math.random() * 1e9);
+    if (S.scene === 'battle' && S.battle === id && S.binv) S.inv = Object.assign({}, S.binv); else S.binv = Object.assign({}, S.inv);
+    S.scene = 'battle'; S.battle = id; S.bopt = {}; S.node = null; S.bg = 'battle'; save();
+    const map = def.map, h = map.length, w = map[0].length;
+    R = {id, def, snap:JSON.stringify(S), seed, rnd:mulberry32(seed), w, h, t:0, drift:0, nextDrift:(def.drift && def.drift.every) || 3.4, every:(def.drift && def.drift.every) || 3.4,
+      anchorT:0, tiles:[], road:[], actors:[], fx:[], log:[], crates:[], carriage:{x:def.carriage.x, y:def.carriage.y, timer:1.5, hold:false, anim:1, blockedMsg:'', whipT:0},
+      paused:true, pauseReason:'Give your first orders, then press Resume.', result:'', summary:'', selected:null, foeN:0, nextId:1, used:{}, cdT:{}, braceT:0, rallyT:0,
+      known:S.f.ttg_drift === 'known'};
+    for (let y = 0; y < h; y++) { const row = [], rr = []; for (let x = 0; x < w; x++) { const c = map[y][x]; row.push(c === '#' ? ROCK : GROUND); rr.push(c === '~'); } R.tiles.push(row); R.road.push(rr); }
+    const names = def.cargo ? def.cargo() : ['spice', 'casket', 'silk'];
+    R.crates = names.map(k => { const c = (typeof TTG_CARGO !== 'undefined' && TTG_CARGO[k]) || {name:k, hp:6, value:30}; return {key:k, name:c.name, hp:c.hp, max:c.hp, value:c.value, hit:false}; });
+    const party = Object.assign({}, def.party);
+    if (party.ossel === 'seat2' && !S.f.ttg_osselIn) party.ossel = [0, 7]; // he rides inside only if the captain told him to
+    if (S.f.ttg_miraPlan === 'crates') party.mira = [1, 7];
+    SQUAD().forEach(pid => { if (S.dead && S.dead[pid]) return; const r = ROLE[pid] || ROLE.mira, p = party[pid] || [2, 4];
+      const a = addActor({side:'squad', key:pid, name:NAME(pid), fig:(TPL[pid] && TPL[pid].fig) || pid, role:r.label, grit:r.grit + (pid === 'mira' && pick('mira', 'ttg_wall') ? 2 : 0),
+        atk:r.atk, range:r.range + (pid === 'quill' && pick('quill', 'ttg_roof') ? 1 : 0), cd:r.cd * (pid === 'quill' && pick('quill', 'ttg_quick') ? .67 : 1), speed:r.speed, skill:r.skill,
+        driver:!!r.driver, roof:!!r.roof, magic:!!r.magic}, typeof p === 'string' ? -1 : p[0], typeof p === 'string' ? -1 : p[1]);
+      if (typeof p === 'string') { a.seat = +p.slice(4); } });
+    syncRiders();
+    def.foes.forEach(f => spawn(f[0], f[1], f[2]));
+    R.selected = R.actors.find(a => a.key === 'mira') || R.actors[0];
+    log('The gate seals behind you. Get the carriage to the far edge.');
+    if (S.f.ttg_drift === 'known') log('Ossel\'s chalk count: ash at the fourth turn, fire at the eighth.');
+  }
+  function addActor(o, x, y){
+    const a = Object.assign({id:R.nextId++, x:0, y:0, nx:null, ny:null, stepT:0, stepDur:1, maxGrit:o.grit, wounds:0, woundNames:[], cdLeft:0, alive:true, down:false, seat:-1, order:null, burnT:0, flash:0, face:1}, o);
+    if (x >= 0) { const p = freeNear(x, y); a.x = p[0]; a.y = p[1]; }
+    R.actors.push(a); return a;
+  }
+  function spawn(key, x, y){
+    const f = FOES[key] || {name:key, hp:9, atk:2, rng:1}; R.foeN++;
+    const a = addActor({side:'enemy', key, name:f.name, fig:f.fig || 'hound', grit:f.grit || Math.round((f.hp || 9) / 2.3), atk:f.atk || 2, range:f.rng || 1, cd:f.cd || 2, speed:f.speed || 2, cargo:!!f.cargo, verb:f.verb || 'hits'}, x, y);
+    a.cdLeft = .5 + R.rnd(); a.face = -1; return a;
+  }
+  function spawnWave(keys){ keys.forEach(k => { const x = Math.max(0, Math.min(W() - 1, R.carriage.x + 2 + Math.floor(R.rnd() * 9))), y = R.rnd() < .5 ? 0 : H() - 1; const a = spawn(k, x, y); a.arrived = 1; addFx('ring', a); }); }
+
+  /* ---------------- queries ---------------- */
+  const inB = (x, y) => x >= 0 && y >= 0 && x < W() && y < H();
+  const tile = (x, y) => R.tiles[y][x];
+  const dist = (ax, ay, bx, by) => Math.abs(ax - bx) + Math.abs(ay - by);
+  const squad = () => R.actors.filter(a => a.alive && a.side === 'squad');
+  const crew = () => R.actors.filter(a => a.side === 'squad');
+  const enemies = () => R.actors.filter(a => a.alive && a.side === 'enemy');
+  const cratesLeft = () => R.crates.filter(c => c.hp > 0).length;
+  const cargoValue = () => R.crates.reduce((s, c) => s + (c.hp > 0 ? c.value : 0), 0);
+  const isCar = (x, y) => { const c = R.carriage; return x >= c.x && x < c.x + CW && y >= c.y && y < c.y + CHH; };
+  const toCar = (x, y) => { const c = R.carriage; const dx = x < c.x ? c.x - x : x >= c.x + CW ? x - (c.x + CW - 1) : 0, dy = y < c.y ? c.y - y : y >= c.y + CHH ? y - (c.y + CHH - 1) : 0; return dx + dy; };
+  const on = (x, y, ex) => { for (const a of R.actors) { if (!(a.alive || a.down) || a.carried || a === ex || a.seat >= 0) continue; if ((a.x === x && a.y === y) || (a.nx === x && a.ny === y)) return a; } return null; };
+  const passable = (x, y, self) => inB(x, y) && tile(x, y) !== ROCK && !isCar(x, y) && !on(x, y, self);
+  function freeNear(x, y){ const seen = new Set([x + ',' + y]), q = [[x, y]]; while (q.length) { const [cx, cy] = q.shift(); if (passable(cx, cy, null)) return [cx, cy]; for (const [dx, dy] of DIRS) { const nx = cx + dx, ny = cy + dy, k = nx + ',' + ny; if (inB(nx, ny) && !seen.has(k)) { seen.add(k); q.push([nx, ny]); } } } return [x, y]; }
+  const freeSeat = (a) => { const order = a && a.driver ? [0, 1, 2] : a && a.roof ? [1, 2, 0] : [2, 1, 0]; for (const i of order) if (!R.actors.some(o => o.alive && o.seat === i)) return i; return -1; };
+  const driverAboard = () => R.actors.some(a => a.alive && a.seat === 0);
+  const rangeOf = a => a.range + (a.seat >= 0 && a.roof ? ROOF_BONUS + (pick('quill', 'ttg_roof') ? 2 : 0) - (pick('quill', 'ttg_roof') ? 0 : 0) : 0);
+  const inRange = (a, t) => t.alive && dist(a.x, a.y, t.x, t.y) <= rangeOf(a);
+  const speedOf = a => a.speed * Math.max(.5, 1 - .12 * a.wounds);
+  const cdOf = a => a.cd * (1 + .15 * a.wounds) * (a.side === 'squad' && R.rallyT > 0 ? .6 : 1);
+  function firstStep(a, goal){ if (goal(a.x, a.y)) return []; const start = a.x + ',' + a.y, prev = new Map([[start, null]]), q = [[a.x, a.y]];
+    while (q.length) { const [cx, cy] = q.shift(); for (const [dx, dy] of DIRS) { const nx = cx + dx, ny = cy + dy, k = nx + ',' + ny; if (prev.has(k) || !passable(nx, ny, a)) continue; prev.set(k, cx + ',' + cy);
+      if (goal(nx, ny)) { let cur = k; while (prev.get(cur) !== start) cur = prev.get(cur); return cur.split(',').map(Number); } q.push([nx, ny]); } } return null; }
+  function beginStep(a, x, y){ if (!passable(x, y, a)) return false; if (x !== a.x) a.face = x > a.x ? 1 : -1; a.nx = x; a.ny = y; a.stepT = 0; a.stepDur = (1 / speedOf(a)) * (tile(x, y) === ASH ? 1.6 : 1); return true; }
+  function stepToward(a, goal){ const s = firstStep(a, goal); if (s === null) return 'stuck'; if (!s.length) return 'there'; return beginStep(a, s[0], s[1]) ? 'moving' : 'stuck'; }
+
+  /* ---------------- events ---------------- */
+  function log(t){ R.log.push(t); if (R.log.length > 60) R.log.shift(); R.logDirty = true; }
+  function autoPause(why){ if (prefs.auto && !R.paused && !R.result) { R.paused = true; R.pauseReason = why; } }
+  function addFx(kind, a, extra){ R.fx.push(Object.assign({kind, x:a.nx !== null && a.nx !== undefined ? a.x + (a.nx - a.x) * a.stepT : a.x, y:a.nx !== null && a.nx !== undefined ? a.y + (a.ny - a.y) * a.stepT : a.y, seat:a.seat, t:0}, extra || {})); }
+  function besideMira(t){ const m = R.actors.find(a => a.key === 'mira' && a.alive); return m && m !== t && dist(m.x, m.y, t.x, t.y) <= 1 ? m : null; }
+  function damage(t, n, src){
+    if (t.side === 'squad') {
+      if (t.key === 'ossel' && S.f.ttg_miraPlan === 'ossel') { const m = besideMira(t); if (m) { log(`Mira takes the blow meant for Ossel.`); t = m; } }
+      if (R.braceT > 0) { const m = R.actors.find(a => a.key === 'mira' && a.alive); if (m && dist(m.x, m.y, t.x, t.y) <= 1) n = Math.ceil(n / 2); }
+      if (pick('mira', 'ttg_door') && besideMira(t)) n = Math.max(1, n - 1);
+    }
+    t.flash = .25; addFx('num', t, {text:'-' + n, col:t.side === 'squad' ? '#e0574a' : '#e8c073'});
+    if (src && dist(src.x, src.y, t.x, t.y) > 1) R.fx.push({kind:'shot', from:src, to:t, magic:!!src.magic, t:0});
+    if (typeof AUDIO !== 'undefined') try { AUDIO.play(t.side === 'squad' ? 'hurt' : 'hit'); } catch (e) {}
+    if (t.side === 'enemy') { t.grit -= n; if (t.grit <= 0) { t.alive = false; t.nx = null; log(`${t.name} falls.`); addFx('ring', t, {col:'#9c8c78'}); } return; }
+    if (n <= t.grit) { t.grit -= n; return; }
+    t.grit = 0; t.wounds++; const w = WOUNDS[Math.floor(R.rnd() * WOUNDS.length)]; t.woundNames.push(w);
+    log(`${t.name} takes a wound: ${w}. Slower from now on.`);
+    if (t.wounds >= DOWN_AT) {
+      if (t.seat >= 0) { const p = freeNear(R.carriage.x + SEATS[t.seat].x, R.carriage.y + (SEATS[t.seat].y ? CHH : -1)); t.x = p[0]; t.y = p[1]; }
+      t.alive = false; t.down = true; t.seat = -1; t.nx = null; t.order = null; log(`${t.name} is down.`); autoPause(`${t.name} is down`);
+      if (R.selected === t) R.selected = squad()[0] || null;
+    } else autoPause(`${t.name} is wounded`);
+  }
+  function strike(a, t){ if (a.cdLeft > 0) return; a.cdLeft = cdOf(a); if (t.x !== a.x) a.face = t.x > a.x ? 1 : -1; a.swing = .2; damage(t, a.atk, a); }
+  function hitCrate(a){
+    if (a.cdLeft > 0) return; const live = R.crates.filter(c => c.hp > 0); if (!live.length) return;
+    a.cdLeft = cdOf(a); a.swing = .2; const c = live[Math.floor(R.rnd() * live.length)];
+    let n = a.atk; if (pick('sgt', 'ttg_ledger')) n--; const m = R.actors.find(o => o.key === 'mira' && o.alive && o.seat < 0);
+    if (S.f.ttg_miraPlan === 'crates' && m && toCar(m.x, m.y) <= 1) n--;
+    n = Math.max(1, n); c.hp = Math.max(0, c.hp - n); addFx('num', a, {text:'crate -' + n, col:'#e8c073'});
+    if (!c.hp) { log(`${a.name} smashes the ${c.name} crate.`); autoPause(`The ${c.name} crate is destroyed`); }
+    else if (!c.hit) { log(`${a.name} is tearing at the ${c.name} crate.`); autoPause(`The ${c.name} crate is under attack`); }
+    c.hit = true;
+  }
+
+  /* ---------------- skills ---------------- */
+  function skillState(a){
+    if (!a || !a.alive || !a.skill) return {ok:false, why:''};
+    const k = a.skill, sk = SKILL[k], uses = (sk.uses || 0) + (k === 'rally' && pick('sgt', 'ttg_rally') ? 0 : 0);
+    if (sk.uses && (R.used[k] || 0) >= uses) return {ok:false, why:'spent'};
+    if (sk.cd && (R.cdT[k] || 0) > 0) return {ok:false, why:Math.ceil(R.cdT[k]) + 's'};
+    if (k === 'whip' && a.seat !== 0) return {ok:false, why:'bench only'};
+    if (k === 'anchor' && !R.known && R.drift < 2) return {ok:false, why:'not yet'};
+    if (k === 'anchor' && R.anchorT > 0) return {ok:false, why:'holding'};
+    if (k === 'volley' && !enemies().some(e => inRange(a, e))) return {ok:false, why:'no target'};
+    return {ok:true, why:''};
+  }
+  function useSkill(a){
+    const st = skillState(a); if (!st.ok) return false; const k = a.skill, sk = SKILL[k];
+    if (sk.uses) R.used[k] = (R.used[k] || 0) + 1; if (sk.cd) R.cdT[k] = sk.cd;
+    if (k === 'rally') { const big = pick('sgt', 'ttg_rally'); squad().forEach(o => { if (dist(o.x, o.y, a.x, a.y) <= (big ? 99 : 3)) { o.grit = Math.min(o.maxGrit, o.grit + (big ? 4 : 3)); addFx('num', o, {text:'+grit', col:'#6f9f82'}); } }); if (big) R.rallyT = 6;
+      log(`${a.name}: "On me! Shares out at the far side!"`); try { AUDIO.play('heal'); } catch (e) {} }
+    if (k === 'whip') { R.carriage.timer = Math.min(R.carriage.timer, .4); R.carriage.whipT = 4; log(`${a.name} cracks the whip. The horses lunge.`); }
+    if (k === 'brace') { R.braceT = 6; log(`${a.name} sets her shield. "Behind me."`); }
+    if (k === 'volley') { enemies().filter(e => inRange(a, e)).forEach(e => damage(e, 2, a)); log(`${a.name} empties a fistful of arrows down the road.`); }
+    if (k === 'anchor') { R.anchorT = pick('ossel', 'ttg_anchor') ? 16 : 8; log(`${a.name} plants his staff. The seam holds still.`); addFx('ring', a, {col:'#9a86e0', big:1}); }
+    return true;
+  }
+
+  /* ---------------- orders ---------------- */
+  const orderMove = (a, x, y) => { a.order = {type:'move', x, y}; };
+  const orderAttack = (a, t) => { a.order = {type:'attack', target:t}; };
+  const orderBoard = a => { a.order = {type:'board'}; };
+  const orderJump = (a, x, y) => { a.order = {type:'jump', x, y}; };
+
+  /* ---------------- simulation ---------------- */
+  function update(dt){
+    if (R.result) return;
+    R.t += dt;
+    if (R.anchorT > 0) { R.anchorT = Math.max(0, R.anchorT - dt); R.nextDrift += dt; }
+    while (R.t >= R.nextDrift && !R.result) tickDrift();
+    for (const k in R.cdT) R.cdT[k] = Math.max(0, R.cdT[k] - dt);
+    R.braceT = Math.max(0, R.braceT - dt); R.rallyT = Math.max(0, R.rallyT - dt); R.carriage.whipT = Math.max(0, R.carriage.whipT - dt);
+    updateCarriage(dt);
+    for (const a of R.actors) updateActor(a, dt);
+    for (const f of R.fx) f.t += dt; R.fx = R.fx.filter(f => f.t < (f.kind === 'shot' ? .2 : f.kind === 'ring' ? .9 : .9));
+    checkEnd();
+  }
+  function tickDrift(){
+    R.nextDrift += R.every; if (R.drift >= DRIFT_MAX) return; R.drift++;
+    const sh = R.def.drift && R.def.drift.shifts && R.def.drift.shifts[R.drift]; if (!sh) return;
+    log(sh.say); if (sh.kind === 'ash') convert(t => t === GROUND, ASH, sh.count, true); else convert(t => t !== ROCK, FIRE, sh.count, false);
+    if (sh.wave) spawnWave(sh.wave); try { AUDIO.play('growl'); } catch (e) {}
+    R.shake = .5; autoPause(`Drift ${R.drift}: ${sh.kind === 'ash' ? 'ash, and more of them' : 'fire, and a larger pack'}`);
+  }
+  function convert(pred, to, n, skipRoad){ let tries = 0; while (n > 0 && tries++ < 3000) { const x = Math.floor(R.rnd() * W()), y = Math.floor(R.rnd() * H()), t = tile(x, y);
+    if (t === to || !pred(t) || isCar(x, y)) continue; if (skipRoad && R.road[y][x]) continue; R.tiles[y][x] = to; n--; } }
+  function syncRiders(){ for (const a of R.actors) if (a.alive && a.seat >= 0) { a.x = R.carriage.x + SEATS[a.seat].x; a.y = R.carriage.y + SEATS[a.seat].y; a.nx = null; } }
+  function updateCarriage(dt){
+    const c = R.carriage; c.anim = Math.min(1, c.anim + dt / .4);
+    const drv = driverAboard(); if (!drv) c.hold = false;
+    c.timer -= dt; if (c.timer > 0) return;
+    const fast = drv && R.actors.some(a => a.alive && a.seat === 0 && a.driver);
+    c.timer = (drv ? PERIOD_DRIVER : PERIOD_LOOSE) * (fast && pick('tavos', 'ttg_whip') ? .67 : 1) * (c.whipT > 0 ? .65 : 1);
+    if (c.hold) return;
+    let steps = 1; if (!drv && !pick('tavos', 'ttg_steady') && R.rnd() < LURCH) { steps = 2; log('No hand on the reins: the horses lurch forward.'); }
+    for (let i = 0; i < steps; i++) {
+      if (c.x + CW >= W()) { exitRealm(); return; }
+      let blocked = '';
+      for (let dy = 0; dy < CHH; dy++) { const o = on(c.x + CW, c.y + dy, null); if (!o) continue;
+        if (o.side === 'enemy' && o.alive) { log(`The carriage rams ${o.name}.`); damage(o, RAM, null); if (o.alive && !shove(o, dy === 0 ? -1 : 1)) blocked = o.name; }
+        else if (o.down) { o.carried = true; o.x = o.y = -9; log(`The crew haul ${o.name} up onto the carriage.`); } // the fallen in the road are picked up, not run down
+        else if (!shove(o, dy === 0 ? -1 : 1)) blocked = o.name; else log(`${o.name} steps out of the horses' way.`); }
+      if (blocked) { if (c.blockedMsg !== blocked) log(`The carriage is blocked by ${blocked}.`); c.blockedMsg = blocked; break; }
+      c.blockedMsg = ''; c.x++; c.anim = 0; syncRiders();
+    }
+  }
+  function shove(o, side){ const bx = o.nx !== null ? o.nx : o.x, by = o.nx !== null ? o.ny : o.y;
+    for (const [dx, dy] of [[0, side], [0, -side], [1, side], [1, -side]]) { const x = bx + dx, y = by + dy; if (y >= R.carriage.y && y < R.carriage.y + CHH && x === R.carriage.x + CW) continue;
+      if (passable(x, y, o)) { o.x = x; o.y = y; o.nx = null; o.stepT = 0; return true; } } return false; }
+  function osselWard(a){ if (!pick('ossel', 'ttg_ward')) return false; const o = R.actors.find(x => x.key === 'ossel' && x.alive); return o && dist(o.x, o.y, a.x, a.y) <= 1; }
+  function updateActor(a, dt){
+    if (!a.alive) return;
+    a.cdLeft = Math.max(0, a.cdLeft - dt); a.flash = Math.max(0, a.flash - dt); a.swing = Math.max(0, (a.swing || 0) - dt);
+    if (a.seat < 0 && a.nx === null && tile(a.x, a.y) === FIRE && !(a.side === 'squad' && osselWard(a))) { a.burnT += dt; if (a.burnT >= 2) { a.burnT = 0; log(`${a.name} is scorched by realm-fire.`); damage(a, 1, null); } }
+    else a.burnT = 0;
+    if (!a.alive) return;
+    if (a.nx !== null) { a.stepT += dt / a.stepDur; if (a.stepT < 1) return; a.x = a.nx; a.y = a.ny; a.nx = null; a.stepT = 0; }
+    if (a.side === 'enemy') enemyThink(a); else squadThink(a);
+  }
+  function squadThink(a){
+    const o = a.order;
+    if (o && o.type === 'attack') { const t = o.target;
+      if (!t.alive) a.order = null; else if (inRange(a, t)) { strike(a, t); return; } else if (a.seat >= 0) a.order = null;
+      else { if (stepToward(a, (x, y) => dist(x, y, t.x, t.y) <= rangeOf(a)) === 'stuck') a.order = null; return; } }
+    if (o && o.type === 'move') {
+      if (a.seat >= 0) { orderJump(a, o.x, o.y); return; }
+      const r = stepToward(a, (x, y) => x === o.x && y === o.y);
+      if (r === 'there') a.order = null; else if (r === 'stuck') { if (stepToward(a, (x, y) => dist(x, y, o.x, o.y) <= 1) !== 'moving') a.order = null; }
+      if (a.order) return; }
+    if (o && o.type === 'board') {
+      if (a.seat >= 0) a.order = null;
+      else if (toCar(a.x, a.y) === 1) { const s = freeSeat(a); if (s < 0) log('Every seat on the carriage is taken.'); else { a.seat = s; syncRiders(); log(`${a.name} climbs onto the ${SEATS[s].name}.`); } a.order = null; return; }
+      else { if (stepToward(a, (x, y) => toCar(x, y) === 1) === 'stuck') a.order = null; return; } }
+    if (o && o.type === 'jump') {
+      if (a.seat < 0) { a.order = null; return; }
+      let best = null; for (let x = R.carriage.x - 1; x <= R.carriage.x + CW; x++) for (let y = R.carriage.y - 1; y <= R.carriage.y + CHH; y++) { if (toCar(x, y) !== 1 || !passable(x, y, a)) continue; if (!best || dist(x, y, o.x, o.y) < dist(best[0], best[1], o.x, o.y)) best = [x, y]; }
+      if (!best) { log(`${a.name} can't find room to jump down.`); a.order = null; return; }
+      a.seat = -1; a.x = best[0]; a.y = best[1]; log(`${a.name} jumps down.`); a.order = best[0] === o.x && best[1] === o.y ? null : {type:'move', x:o.x, y:o.y}; return; }
+    let t = null; for (const e of enemies()) if (inRange(a, e) && (!t || e.grit < t.grit)) t = e;
+    if (t) strike(a, t);
+  }
+  function enemyThink(a){
+    if (a.cargo && cratesLeft() > 0) { if (toCar(a.x, a.y) === 1) { if (a.x !== R.carriage.x + 1) a.face = a.x < R.carriage.x + 1 ? 1 : -1; hitCrate(a); return; }
+      if (stepToward(a, (x, y) => toCar(x, y) === 1) !== 'stuck') return; }
+    let t = null; for (const s of squad()) if (!t || dist(a.x, a.y, s.x, s.y) < dist(a.x, a.y, t.x, t.y)) t = s;
+    if (!t) return; if (inRange(a, t)) { strike(a, t); return; }
+    stepToward(a, (x, y) => dist(x, y, t.x, t.y) <= a.range);
+  }
+  function exitRealm(){
+    const out = [], left = [];
+    for (const a of crew()) { if (!a.alive && !a.down) continue; if (a.seat >= 0 || a.carried || toCar(a.x, a.y) <= ESCAPE_RANGE) out.push(a); else left.push(a); }
+    R.out = out; R.left = left;
+    const n = cratesLeft(), capLost = left.some(a => a.key === 'sgt');
+    R.result = capLost || !out.length ? 'lose' : 'win';
+    R.summary = capLost ? 'The carriage crosses out of the warren without its captain. The guild does not pay for that.'
+      : `The carriage crosses out of the warren with ${n} of ${R.crates.length} crates, worth ${cargoValue()} in coin. `
+        + `Out: ${out.map(a => a.name + (a.down ? ' (carried)' : '')).join(', ') || 'nobody'}.` + (left.length ? ` Left in the Ashway: ${left.map(a => a.name).join(', ')}.` : '');
+    log(R.summary); onEnd();
+  }
+  function checkEnd(){ if (R.result) return; if (!squad().length) { R.result = 'lose'; R.summary = 'Every shareholder is down. The horses run on, with nobody left to defend the carriage.'; R.out = []; R.left = crew(); onEnd(); } }
+
+  /* ---------------- the end of the fight ---------------- */
+  function onEnd(){ try { AUDIO.play(R.result === 'win' ? 'win' : 'lose'); } catch (e) {} R.endShown = false; }
+  function finish(){
+    if (!R || !R.result) return;
+    const def = R.def;
+    if (R.result === 'lose') { tallyT('retries'); S = migrate(JSON.parse(R.snap)); return begin2(R.id, def, {}); }
+    const lost = (R.left || []).filter(a => a.key !== 'sgt');
+    S.f.ttg_cratesLeft = cratesLeft(); S.f.ttg_casketSafe = R.crates.some(c => c.key === 'casket' && c.hp > 0) ? 1 : 0;
+    S.f.ttg_cargoValue = cargoValue(); S.f.ttg_lost = lost.length ? listOf(lost.map(a => a.name)) : '';
+    S.f.ttg_wounded = crew().filter(a => a.wounds && (R.out || []).includes(a)).map(a => a.key);
+    lost.forEach(a => { try { kill(a.key); } catch (e) {} });
+    tallyT('won');
+    const xp = Math.round((def.xp || 0) * (typeof XPK !== 'undefined' ? XPK : 1)), up = gainXP(xp);
+    note(`Through. +${xp} experience.`, 'good'); if (up && typeof lvlNote === 'function') note(lvlNote(), 'good');
+    R = null; stopLoop();
+    S.scene = 'talk'; S.battle = null; S.binv = null; save();
+    talk(def.after);
+  }
+  const listOf = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a[0];
+  const tallyT = k => { try { if (typeof tally === 'function') tally(k); } catch (e) {} };
+
+  /* ---------------- the screen ---------------- */
+  const L = {portrait:false, T:32, cols:20, rows:12, dpr:1};
+  let cv = null, ctx = null, bg = null, raf = 0, last = 0, acc = 0, hudKey = '', logKey = '';
+  function begin2(id, def, opt){
+    begin(id, def, opt);
+    view = 'rtbattle'; B = null; document.body.classList.add('rt'); try { AUDIO.setScene(def.music || 'battle'); } catch (e) {}
+    $('#sheet').hidden = true; toTop();
+    const known = R.known;
+    $('#app').innerHTML = `<header class="hud bhud"><div class="bhead"><div class="loc">${esc(def.title)}</div><div class="sub">${esc(def.sub || '')}</div></div><div class="hudr">${hudButtons()}</div></header>
+      <div class="rtdrift" aria-label="Drift"><span class="lbl">Drift</span><span class="bar" id="rtBar">${Array.from({length:DRIFT_MAX}, (_, i) => `<i class="${known && (i + 1 === 4 || i + 1 === 8) ? 'mark' : ''}"></i>`).join('')}</span><span id="rtDn" class="dn"></span><span class="sp"></span><span class="rtclock" id="rtClock">0:00</span></div>
+      <div class="rtstage" id="rtStage"><canvas id="rtcv" aria-label="Battle map"></canvas><div class="rtbanner" id="rtBanner" hidden></div><div class="rtlog" id="rtLog" aria-live="polite"></div>
+        <div class="rtover" id="rtOver" hidden><div class="ubar"><div class="rtot" id="rtOt"></div><div class="txt" id="rtOx"></div><button class="btn primary" id="rtGo"></button></div></div></div>
+      <div class="rtorders"><button class="btn primary" id="rtPause">Resume</button><button class="btn" id="rtSkill">Skill</button><button class="btn" id="rtBoard">Board</button><button class="btn" id="rtHold">Hold</button><span class="sp"></span><button class="btn" id="rtAuto">Auto-pause</button><button class="btn" id="rtSpeed">1×</button></div>
+      <div class="rtroster" id="rtRoster"></div>
+      <div class="hint rthelp">Tap a shareholder, then tap ground to move, an enemy to attack, or the carriage to climb aboard. Riders tap a tile beside the carriage to jump down. Space pauses, 1 to 5 select, Q uses a skill.</div>`;
+    bindHud();
+    cv = $('#rtcv'); ctx = cv.getContext('2d');
+    $('#rtPause').onclick = () => { click(); setPaused(!R.paused); };
+    $('#rtSkill').onclick = () => { click(); if (R.selected) useSkill(R.selected); };
+    $('#rtBoard').onclick = () => { click(); const s = sel(); if (!s) return; if (s.seat >= 0) orderJump(s, s.x, s.y - 1); else orderBoard(s); };
+    $('#rtHold').onclick = () => { click(); if (!driverAboard()) return; R.carriage.hold = !R.carriage.hold; log(R.carriage.hold ? 'The driver hauls on the reins. The carriage holds.' : 'The driver lets the horses run.'); };
+    $('#rtAuto').onclick = () => { click(); prefs.auto = !prefs.auto; savePrefs(); };
+    $('#rtSpeed').onclick = () => { click(); prefs.speed = prefs.speed === 1 ? 2 : 1; savePrefs(); };
+    $('#rtGo').onclick = () => { click(); finish(); };
+    cv.onpointerdown = tap;
+    buildRoster(); hudKey = logKey = '';
+    layout(); if (!raf) { last = performance.now(); acc = 0; raf = requestAnimationFrame(frame); }
+  }
+  const click = () => { try { AUDIO.play('click'); } catch (e) {} };
+  const sel = () => R && R.selected && R.selected.alive ? R.selected : null;
+  function setPaused(p){ if (R.result) return; R.paused = p; if (p) R.pauseReason = 'Give orders, then press Resume.'; }
+  function stopLoop(){ if (raf) cancelAnimationFrame(raf); raf = 0; document.body.classList.remove('rt'); }
+
+  function layout(){
+    if (!cv || !R) return; const st = $('#rtStage'); if (!st) return;
+    const portrait = window.innerHeight > window.innerWidth * 1.05, cols = portrait ? H() : W(), rows = portrait ? W() : H();
+    const below = ['.rtorders', '.rtroster', '.rthelp'].reduce((s, q) => { const e = $(q); return s + (e && e.offsetParent ? e.offsetHeight + 10 : 0); }, 0);
+    const top = st.getBoundingClientRect().top + window.scrollY, room = Math.max(200, window.innerHeight - top - below - 26);
+    const T = Math.max(14, Math.floor(Math.min(st.clientWidth / cols, room / rows)));
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (L.T === T && L.portrait === portrait && L.dpr === dpr && bg && bg.w === W() && L.id === R.id + R.seed) return;
+    Object.assign(L, {portrait, cols, rows, T, dpr, id:R.id + R.seed});
+    cv.width = cols * T * dpr; cv.height = rows * T * dpr; cv.style.width = cols * T + 'px'; cv.style.height = rows * T + 'px';
+    paintGround();
+  }
+  /* the ground, painted once in logical orientation with FTR's own tiles; ash and fire go over it each frame */
+  function paintGround(){
+    const T = L.T, dpr = L.dpr, c = document.createElement('canvas'); c.width = W() * T * dpr; c.height = H() * T * dpr; c.w = W();
+    const bctx = c.getContext('2d'); bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const d = document.createElement('canvas'); d.width = c.width; d.height = c.height; const dctx = d.getContext('2d');
+    const map = R.def.map.map(r => r.replace(/~/g, '.'));
+    const g0 = G; G = Object.assign({}, G, {bctx, dctx, T});
+    try { prerender(map, W(), H(), !!R.def.dark, false, R.def.style || 'plain', false); } catch (e) { console.warn('rt ground', e); for (let y = 0; y < H(); y++) for (let x = 0; x < W(); x++) { bctx.fillStyle = map[y][x] === '#' ? '#111' : '#3a332c'; bctx.fillRect(x * T, y * T, T, T); } }
+    G = g0;
+    // a dead warren: the colour drained out of the ground, then darkened
+    bctx.save(); bctx.globalCompositeOperation = 'saturation'; bctx.fillStyle = 'rgba(128,128,128,' + (R.def.wash != null ? R.def.wash : .85) + ')'; bctx.fillRect(0, 0, W() * T, H() * T);
+    bctx.globalCompositeOperation = 'multiply'; bctx.fillStyle = R.def.tint || '#b8a898'; bctx.fillRect(0, 0, W() * T, H() * T); bctx.restore();
+    // the road: two worn ruts and a pale crown down the middle, where the carriage runs
+    for (let y = 0; y < H(); y++) for (let x = 0; x < W(); x++) if (R.road[y][x]) { const px = x * T, py = y * T;
+      bctx.fillStyle = 'rgba(120,100,80,.28)'; bctx.fillRect(px, py, T, T);
+      const top = !R.road[y - 1] || !R.road[y - 1][x]; bctx.fillStyle = 'rgba(30,22,16,.45)'; bctx.fillRect(px, py + (top ? T * .28 : T * .62), T, Math.max(2, T * .1));
+      for (let i = 0; i < 3; i++) { const hx = hash(x, y, i + 40), hy = hash(y, x, i + 41); bctx.fillStyle = 'rgba(200,180,150,.12)'; bctx.fillRect(px + hx * T, py + hy * T, Math.max(1, T * .08), Math.max(1, T * .05)); } }
+    // the far gate: a seam of warren light at the road's end
+    const gx = (W() - 1) * T, gy = R.carriage.y * T, gr = bctx.createLinearGradient(gx, 0, gx + T, 0); gr.addColorStop(0, 'rgba(154,134,224,0)'); gr.addColorStop(1, 'rgba(201,187,255,.55)');
+    bctx.fillStyle = gr; bctx.fillRect(gx, gy - T * .2, T, CHH * T + T * .4);
+    bg = c;
+  }
+  /* logical (x forward, y across) to the screen; in portrait the road runs up */
+  const scr = (x, y) => L.portrait ? [(y + .5) * L.T, (W() - x - .5) * L.T] : [(x + .5) * L.T, (y + .5) * L.T];
+  const cellAt = (px, py) => L.portrait ? [W() - 1 - Math.floor(py / L.T), Math.floor(px / L.T)] : [Math.floor(px / L.T), Math.floor(py / L.T)];
+  const ease = k => 1 - (1 - k) * (1 - k);
+  const carX = () => R.carriage.x - (1 - ease(R.carriage.anim));
+  const posOf = a => a.seat >= 0 ? [carX() + SEATS[a.seat].x, R.carriage.y + SEATS[a.seat].y] : a.nx !== null ? [a.x + (a.nx - a.x) * a.stepT, a.y + (a.ny - a.y) * a.stepT] : [a.x, a.y];
+  const logical = () => { const T = L.T; ctx.setTransform(L.dpr, 0, 0, L.dpr, 0, 0); if (L.portrait) { ctx.translate(0, W() * T); ctx.rotate(-Math.PI / 2); } };
+  const upright = () => ctx.setTransform(L.dpr, 0, 0, L.dpr, 0, 0);
+
+  function draw(now){
+    const T = L.T; upright(); ctx.clearRect(0, 0, L.cols * T, L.rows * T);
+    let sx = 0, sy = 0; if (R.shake > 0) { sx = (Math.random() - .5) * T * .15 * R.shake * 2; sy = (Math.random() - .5) * T * .15 * R.shake * 2; R.shake = Math.max(0, R.shake - 1 / 60); }
+    logical(); ctx.translate(sx, sy); ctx.drawImage(bg, 0, 0, W() * T, H() * T);
+    for (let y = 0; y < H(); y++) for (let x = 0; x < W(); x++) { const k = tile(x, y); if (k === ASH) { const ag = ctx.createRadialGradient((x + .5) * T, (y + .5) * T, T * .1, (x + .5) * T, (y + .5) * T, T * .75); ag.addColorStop(0, 'rgba(150,142,132,.55)'); ag.addColorStop(1, 'rgba(150,142,132,.12)'); ctx.fillStyle = ag; ctx.fillRect(x * T, y * T, T, T); ctx.fillStyle = 'rgba(220,214,204,.22)'; for (let i = 0; i < 4; i++) ctx.fillRect(x * T + hash(x, y, i) * T, y * T + hash(y, x, i) * T, Math.max(1, T * .07), Math.max(1, T * .07)); }
+      else if (k === FIRE) { const f = .75 + .25 * Math.sin(now / 150 + x * 1.7 + y * 2.3), g = ctx.createRadialGradient((x + .5) * T, (y + .6) * T, T * .05, (x + .5) * T, (y + .5) * T, T * .75); g.addColorStop(0, `rgba(255,200,90,${.8 * f})`); g.addColorStop(.5, `rgba(224,90,30,${.6 * f})`); g.addColorStop(1, 'rgba(120,30,10,.15)'); ctx.fillStyle = g; ctx.fillRect(x * T, y * T, T, T); } }
+    const s = sel();
+    if (s && s.seat >= 0 && !R.result) { ctx.fillStyle = 'rgba(111,159,130,.3)'; for (let x = R.carriage.x - 1; x <= R.carriage.x + CW; x++) for (let y = R.carriage.y - 1; y <= R.carriage.y + CHH; y++) if (inB(x, y) && toCar(x, y) === 1 && passable(x, y, s)) ctx.fillRect(x * T + 2, y * T + 2, T - 4, T - 4); }
+    if (s && !R.result && s.seat < 0) { const r = rangeOf(s); if (r > 1) { ctx.strokeStyle = 'rgba(232,192,115,.18)'; ctx.lineWidth = 1; for (let y = 0; y < H(); y++) for (let x = 0; x < W(); x++) if (dist(x, y, s.x, s.y) === r) ctx.strokeRect(x * T + 3, y * T + 3, T - 6, T - 6); } }
+    drawCarriage(now, s);
+    // order line
+    if (s && s.order && !R.result) { const p = posOf(s); let q = null; const o = s.order;
+      if (o.type === 'move' || o.type === 'jump') q = [o.x, o.y]; else if (o.type === 'attack' && o.target.alive) q = posOf(o.target); else if (o.type === 'board') q = [R.carriage.x + 1, R.carriage.y + .5];
+      if (q) { ctx.setLineDash([T * .14, T * .14]); ctx.strokeStyle = o.type === 'attack' ? '#e0574a' : '#e8c073'; ctx.lineWidth = Math.max(1.5, T * .05); ctx.beginPath(); ctx.moveTo((p[0] + .5) * T, (p[1] + .5) * T); ctx.lineTo((q[0] + .5) * T, (q[1] + .5) * T); ctx.stroke(); ctx.setLineDash([]); } }
+    // the figures, upright, back to front
+    upright(); ctx.translate(sx, sy);
+    const list = R.actors.filter(a => (a.alive || a.down) && !a.carried).map(a => ({a, p:posOf(a)})).map(o => Object.assign(o, {s:scr(o.p[0], o.p[1])})).sort((u, v) => u.s[1] - v.s[1]);
+    const fs = T / 34;
+    for (const {a, s:[x, y]} of list) {
+      const base = y + T * .3, sc = fs * (a.seat >= 0 ? .85 : 1);
+      if (a === s) { ctx.save(); ctx.strokeStyle = '#e8c073'; ctx.lineWidth = Math.max(1.5, T * .06); ctx.beginPath(); ctx.ellipse(x, base + T * .08, T * .36, T * .14, 0, 0, 7); ctx.stroke(); ctx.restore(); }
+      if (a.side === 'enemy' && R.selected && R.selected.order && R.selected.order.target === a) { ctx.save(); ctx.strokeStyle = '#e0574a'; ctx.lineWidth = Math.max(1.5, T * .05); ctx.beginPath(); ctx.ellipse(x, base + T * .08, T * .34, T * .13, 0, 0, 7); ctx.stroke(); ctx.restore(); }
+      const lunge = a.swing > 0 ? Math.sin((1 - a.swing / .2) * Math.PI) * T * .12 * a.face : 0, dir = L.portrait ? (a.side === 'enemy' ? -1 : 1) : a.face;
+      if (a.down) { ctx.save(); ctx.translate(x, base); ctx.rotate(Math.PI / 2 * .9); try { drawFigure(ctx, a.fig, 0, 0, sc, now, {alpha:.55, still:true, dir}); } catch (e) {} ctx.restore(); continue; }
+      try { drawFigure(ctx, a.fig, x + (L.portrait ? 0 : lunge), base - (L.portrait ? lunge * a.face : 0), sc, now, {dir, phase:a.id, alpha:a.arrived && R.t < 1 ? .6 : 1}); } catch (e) { ctx.fillStyle = a.side === 'squad' ? '#6f9f82' : '#a8332a'; ctx.beginPath(); ctx.arc(x, y, T * .3, 0, 7); ctx.fill(); }
+      if (a.flash > 0) { ctx.save(); ctx.globalAlpha = a.flash * 2; ctx.fillStyle = a.side === 'squad' ? '#e0574a' : '#fff4dc'; ctx.beginPath(); ctx.ellipse(x, base - T * .4, T * .24, T * .4, 0, 0, 7); ctx.globalCompositeOperation = 'overlay'; ctx.fill(); ctx.restore(); }
+      // grit bar and wound pips over the head
+      const bw = T * .62, bx = x - bw / 2, by = base - T * 1.12;
+      ctx.fillStyle = 'rgba(0,0,0,.65)'; ctx.fillRect(bx - 1, by - 1, bw + 2, Math.max(3, T * .08) + 2);
+      ctx.fillStyle = a.side === 'squad' ? '#8fc29f' : '#c9973f'; ctx.fillRect(bx, by, bw * Math.max(0, a.grit) / a.maxGrit, Math.max(3, T * .08));
+      for (let w = 0; w < a.wounds; w++) { ctx.fillStyle = '#e0574a'; ctx.beginPath(); ctx.arc(bx + T * .06 + w * T * .16, by - T * .08, Math.max(2, T * .055), 0, 7); ctx.fill(); }
+    }
+    // effects
+    for (const f of R.fx) {
+      if (f.kind === 'shot') { const p = scr(...posOf(f.from)), q = scr(...posOf(f.to)), k = 1 - f.t / .2; ctx.strokeStyle = f.magic ? `rgba(201,187,255,${k})` : `rgba(232,220,190,${k})`; ctx.lineWidth = f.magic ? Math.max(2, T * .08) : Math.max(1.4, T * .04);
+        ctx.beginPath(); ctx.moveTo(p[0], p[1] - T * .35); ctx.lineTo(q[0], q[1] - T * .3); ctx.stroke(); }
+      else if (f.kind === 'ring') { const p = scr(f.x, f.y), k = f.t / .9; ctx.strokeStyle = f.col || '#9a86e0'; ctx.globalAlpha = 1 - k; ctx.lineWidth = Math.max(1.5, T * .06); ctx.beginPath(); ctx.ellipse(p[0], p[1] + T * .3, T * (.2 + k * (f.big ? 1.6 : .6)), T * (.08 + k * (f.big ? .6 : .25)), 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+      else { const p = f.seat >= 0 ? scr(carX() + SEATS[f.seat].x, R.carriage.y + SEATS[f.seat].y) : scr(f.x, f.y); ctx.globalAlpha = 1 - f.t / .9; ctx.fillStyle = f.col; ctx.font = `700 ${Math.max(11, T * .36)}px var(--label, sans-serif)`; ctx.textAlign = 'center';
+        ctx.strokeStyle = 'rgba(0,0,0,.8)'; ctx.lineWidth = 3; ctx.strokeText(f.text, p[0], p[1] - T * 1.2 - f.t * T * .8); ctx.fillText(f.text, p[0], p[1] - T * 1.2 - f.t * T * .8); ctx.globalAlpha = 1; ctx.textAlign = 'left'; }
+    }
+    if (R.anchorT > 0) { ctx.fillStyle = `rgba(154,134,224,${.06 + .03 * Math.sin(now / 300)})`; ctx.fillRect(0, 0, L.cols * T, L.rows * T); }
+    if (R.paused && !R.result) { ctx.fillStyle = 'rgba(13,11,10,.22)'; ctx.fillRect(0, 0, L.cols * T, L.rows * T); }
+  }
+  /* the carriage, from above: black lacquer gone grey at the edges, brass trim, the guild's knot on the door, two horses ahead */
+  function drawCarriage(now, s){
+    const T = L.T, x0 = carX() * T, y0 = R.carriage.y * T, w = CW * T, h = CHH * T, moving = R.carriage.anim < 1;
+    // horses and traces
+    const hx = x0 + w + T * .1;
+    ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = Math.max(1, T * .04); ctx.beginPath(); ctx.moveTo(x0 + w, y0 + h * .35); ctx.lineTo(hx + T * .3, y0 + h * .3); ctx.moveTo(x0 + w, y0 + h * .65); ctx.lineTo(hx + T * .3, y0 + h * .7); ctx.stroke();
+    [.28, .72].forEach((k, i) => { const cy = y0 + h * k, bob = moving ? Math.sin(now / 90 + i * 2) * T * .03 : 0, hc = i ? '#4a3020' : '#3a2418';
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(hx + T * .45, cy + T * .06, T * .5, T * .2, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = hc; ctx.beginPath(); ctx.ellipse(hx + T * .4 + bob, cy, T * .42, T * .17, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(hx + T * .88 + bob, cy, T * .17, T * .1, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#1a120c'; ctx.fillRect(hx + T * .3 + bob, cy - T * .03, T * .5, T * .06); });
+    // wheels
+    ctx.fillStyle = '#17120e'; [[.12, -.06], [.12, 1.06], [.82, -.06], [.82, 1.06]].forEach(([a, b]) => { ctx.fillRect(x0 + w * a - T * .22, y0 + h * b - T * .07, T * .44, T * .14); });
+    // shadow and body
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(x0 + T * .1, y0 + T * .14, w - T * .1, h - T * .06);
+    const g = ctx.createLinearGradient(x0, y0, x0, y0 + h); g.addColorStop(0, '#2c2420'); g.addColorStop(.5, '#1a1512'); g.addColorStop(1, '#241d19'); ctx.fillStyle = g; ctx.fillRect(x0 + T * .06, y0 + T * .06, w - T * .12, h - T * .12);
+    ctx.strokeStyle = s && s.seat < 0 ? '#e8c073' : '#8a6a32'; ctx.lineWidth = Math.max(1.5, T * .06); ctx.strokeRect(x0 + T * .06, y0 + T * .06, w - T * .12, h - T * .12);
+    ctx.strokeStyle = 'rgba(201,151,63,.35)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + T * .2, y0 + T * .2, w - T * .4, h - T * .4);
+    // the driver's bench (front) and the roof rail
+    ctx.fillStyle = '#4a3622'; ctx.fillRect(x0 + w - T * .5, y0 + T * .12, T * .36, h - T * .24);
+    // the guild's knot on the side
+    ctx.strokeStyle = 'rgba(232,192,115,.7)'; ctx.lineWidth = Math.max(1, T * .04); const kx = x0 + w * .5, ky = y0 + h * .5; ctx.beginPath(); ctx.arc(kx - T * .1, ky, T * .14, 0, 7); ctx.arc(kx + T * .1, ky, T * .14, 0, 7); ctx.stroke();
+    // crates
+    R.crates.forEach((c, i) => { const cc = CRATE_CELLS[i]; if (!cc) return; const px = x0 + cc[0] * T, py = y0 + cc[1] * T, m = T * .2;
+      if (c.hp > 0) { ctx.fillStyle = c.key === 'casket' ? '#3a3a40' : '#8a6a42'; ctx.fillRect(px + m, py + m, T - 2 * m, T - 2 * m); ctx.strokeStyle = c.key === 'casket' ? '#9c9cae' : '#3d2a16'; ctx.lineWidth = Math.max(1, T * .05); ctx.strokeRect(px + m, py + m, T - 2 * m, T - 2 * m);
+        ctx.beginPath(); ctx.moveTo(px + m, py + T / 2); ctx.lineTo(px + T - m, py + T / 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(px + m, py + T - m + 1, T - 2 * m, Math.max(2, T * .07)); ctx.fillStyle = c.hit ? '#e0574a' : '#e8c073'; ctx.fillRect(px + m, py + T - m + 1, (T - 2 * m) * c.hp / c.max, Math.max(2, T * .07)); }
+      else { ctx.strokeStyle = '#6b5a48'; ctx.lineWidth = Math.max(1.5, T * .05); ctx.beginPath(); ctx.moveTo(px + m, py + m); ctx.lineTo(px + T - m, py + T - m); ctx.moveTo(px + T - m, py + m); ctx.lineTo(px + m, py + T - m); ctx.stroke(); } });
+    if (R.carriage.hold) { ctx.fillStyle = '#e8c073'; ctx.fillRect(x0 + w - T * .16, y0 + T * .1, T * .08, h - T * .2); }
+  }
+
+  /* ---------------- the HUD ---------------- */
+  function buildRoster(){
+    $('#rtRoster').innerHTML = crew().map((a, i) => `<button class="rtcard" data-i="${i}"><span class="top"><span class="nm">${i + 1}. ${esc(a.name)}</span><span class="rl">${esc(a.role)}</span></span><span class="grit"><i></i></span><span class="st"></span></button>`).join('');
+    $('#rtRoster').onclick = e => { const b = e.target.closest('[data-i]'); if (!b || !R) return; const a = crew()[+b.dataset.i]; if (a && a.alive) { if (R.selected === a && a.skill) useSkill(a); R.selected = a; click(); } };
+  }
+  function status(a){ if (a.carried) return 'Down, on the carriage'; if (a.down) return 'Down'; if (!a.alive) return 'Gone'; const o = a.order;
+    if (o && o.type === 'attack') return 'Attacking ' + o.target.name; if (o && o.type === 'board') return 'To the carriage'; if (o && (o.type === 'move' || o.type === 'jump')) return 'Moving';
+    if (a.seat >= 0) return 'On the ' + SEATS[a.seat].name; return 'Holding ground'; }
+  function hud(){
+    const s = Math.floor(R.t), narrow = window.innerWidth <= 520, sa = sel(), sk = sa ? skillState(sa) : {ok:false, why:''};
+    const ks = [s, R.drift, Math.ceil(R.nextDrift - R.t), R.anchorT > 0, R.paused, R.pauseReason, R.result, sa && sa.id, sa && sa.seat, sk.ok, sk.why, R.carriage.hold, driverAboard(), prefs.auto, prefs.speed, narrow,
+      crew().map(a => [a.grit, a.wounds, a.alive, status(a)].join()).join('|')].join('/');
+    if (ks !== hudKey) { hudKey = ks;
+      $('#rtClock').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      [...$('#rtBar').children].forEach((e, i) => { const n = i + 1; e.className = (R.known && (n === 4 || n === 8) ? 'mark ' : '') + (n <= R.drift ? (n >= 8 ? 'on fire' : n >= 4 ? 'on ash' : 'on') : ''); });
+      $('#rtDn').textContent = R.anchorT > 0 ? `anchored, ${Math.ceil(R.anchorT)}s` : R.drift >= DRIFT_MAX ? 'burning' : R.known ? (R.drift < 4 ? `ash in ${Math.ceil(R.nextDrift - R.t + (3 - R.drift) * R.every)}s` : R.drift < 8 ? `fire in ${Math.ceil(R.nextDrift - R.t + (7 - R.drift) * R.every)}s` : 'burning') : 'listen for the ground';
+      const bn = $('#rtBanner'); if (R.paused && !R.result) { bn.hidden = false; bn.innerHTML = `<b>Paused</b>${esc(R.pauseReason)}`; } else bn.hidden = true;
+      $('#rtPause').textContent = R.paused ? 'Resume' : 'Pause'; $('#rtPause').disabled = !!R.result;
+      const skb = $('#rtSkill'); skb.disabled = !sk.ok; skb.textContent = sa && sa.skill ? SKILL[sa.skill].name + (sk.why ? ` · ${sk.why}` : '') : 'Skill'; skb.title = sa && sa.skill ? SKILL[sa.skill].desc : '';
+      const bb = $('#rtBoard'); if (sa && sa.seat >= 0) { bb.textContent = narrow ? 'Down' : 'Jump down'; bb.disabled = false; } else { bb.textContent = 'Board'; bb.disabled = !sa || freeSeat(sa) < 0; }
+      const hb = $('#rtHold'); hb.disabled = !driverAboard(); hb.textContent = R.carriage.hold ? 'Release' : 'Hold'; hb.classList.toggle('on', R.carriage.hold);
+      const ab = $('#rtAuto'); ab.textContent = narrow ? 'Auto' : prefs.auto ? 'Auto-pause on' : 'Auto-pause off'; ab.classList.toggle('on', prefs.auto);
+      $('#rtSpeed').textContent = prefs.speed + '×';
+      crew().forEach((a, i) => { const b = $(`#rtRoster [data-i="${i}"]`); if (!b) return; b.classList.toggle('sel', a === R.selected && a.alive); b.classList.toggle('down', !a.alive);
+        b.querySelector('.grit i').style.width = (100 * Math.max(0, a.grit) / a.maxGrit) + '%'; b.querySelector('.st').innerHTML = esc(status(a)) + (a.wounds && a.alive ? ` <span class="w">· ${a.wounds} wound${a.wounds > 1 ? 's' : ''}</span>` : ''); });
+      const ov = $('#rtOver'); if (R.result) { ov.hidden = false; $('#rtOt').textContent = R.result === 'win' ? 'Through the gate' : 'The run fails'; $('#rtOt').className = 'rtot ' + R.result; $('#rtOx').textContent = R.summary; $('#rtGo').textContent = R.result === 'win' ? 'Out into the rain' : 'Run the Ashway again'; } else ov.hidden = true;
+    }
+    const lk = R.log.length + ':' + R.log[R.log.length - 1]; if (lk !== logKey) { logKey = lk; $('#rtLog').innerHTML = R.log.slice(window.innerWidth <= 520 ? -2 : -3).map(l => `<div>${esc(l)}</div>`).join(''); }
+  }
+
+  /* ---------------- input ---------------- */
+  function actorAt(px, py){ let best = null, bd = L.T * .62; for (const a of R.actors) { if (!a.alive) continue; const [x, y] = scr(...posOf(a)), d = Math.hypot(px - x, py - (y - L.T * .1)); if (d < bd) { best = a; bd = d; } } return best; }
+  function tap(ev){
+    if (!R || R.result) return; const r = cv.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top;
+    const hit = actorAt(px, py), s = sel();
+    if (hit && hit.side === 'squad') { if (s === hit && hit.seat < 0 && !hit.order && hit.skill) {} R.selected = hit; click(); return; }
+    if (!s) return;
+    if (hit && hit.side === 'enemy') { orderAttack(s, hit); click(); return; }
+    const [x, y] = cellAt(px, py); if (!inB(x, y)) return;
+    if (isCar(x, y)) { if (s.seat < 0) orderBoard(s); click(); return; }
+    if (tile(x, y) === ROCK) return;
+    if (s.seat >= 0) orderJump(s, x, y); else orderMove(s, x, y); click();
+  }
+  window.addEventListener('keydown', e => {
+    if (view !== 'rtbattle' || !R) return; if (!$('#sheet').hidden || ($('#settings') && !$('#settings').hidden) || ($('#chars') && !$('#chars').hidden)) return;
+    if (e.code === 'Space') { e.preventDefault(); if (R.result) finish(); else setPaused(!R.paused); }
+    else if (/^Digit[1-5]$/.test(e.code)) { const a = crew()[+e.code.slice(5) - 1]; if (a && a.alive) R.selected = a; }
+    else if (e.code === 'KeyB') $('#rtBoard').click(); else if (e.code === 'KeyH') $('#rtHold').click(); else if (e.code === 'KeyQ') $('#rtSkill').click();
+    else return;
+    e.stopImmediatePropagation();
+  }, true);
+  window.addEventListener('resize', () => { if (view === 'rtbattle') layout(); });
+
+  function frame(now){
+    raf = 0;
+    if (view !== 'rtbattle' || !R || !cv || !cv.isConnected) { stopLoop(); return; }
+    const dt = Math.min(.1, (now - last) / 1000); last = now;
+    if (!R.paused && !R.result) { acc += dt * prefs.speed; while (acc >= STEP) { update(STEP); acc -= STEP; } }
+    layout(); draw(now); hud();
+    raf = requestAnimationFrame(frame);
+  }
+
+  return {start:begin2, update, finish, useSkill, skillState, orderMove, orderAttack, orderBoard, orderJump, freeSeat, toCar, enemies, squad, crew, inRange, setPaused, prefs,
+    get R(){ return R; }};
+})();
+window.__rt = RT;
+
+/* an rt:true fight goes to the real-time battle; any other still goes to FTR's */
+{ const _ftrStartBattle = startBattle; startBattle = function(id, opt = {}){ const def = typeof battleDef === 'function' ? battleDef(id) : BATTLES[id]; if (def && def.rt) return RT.start(id, def, opt || {}); return _ftrStartBattle.apply(this, arguments); }; }
+
 /* ============ resume & boot ============ */
 function resume(){
   $('#sheet').hidden = true; $('#modal').hidden = true; notes = []; titleAnim = null;
@@ -12847,6 +13770,7 @@ function loop(t){
 }
 function start(){
   applySet();
+  if (typeof TTG_CH1 !== 'undefined') registerChapter(1, TTG_CH1, 'ttg'); // Trygalle Run, Chapter One
   if (typeof CH1 !== 'undefined') registerChapter(1, CH1);
   if (typeof CH2 !== 'undefined') registerChapter(2, CH2);
   if (typeof CH3 !== 'undefined') registerChapter(3, CH3);

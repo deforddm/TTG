@@ -4,7 +4,7 @@ function tpatchCls(k){ return 'tpatch' + (k && / viewBox="0 0 600 /.test(ART[k] 
 /* installing the game as an app on a PC. Chrome and Edge offer it with beforeinstallprompt, which is held here and fired from our own
    button (the title offers it once in a while; Settings always has it). Safari on a Mac has File > Add to Dock and no event, so it gets
    the directions. Firefox on a PC can't install web apps, so it gets nothing. Never offered inside the installed app itself. */
-const INSTKEY = 'from-the-ranks-install';
+const INSTKEY = 'trygalle-run-install';
 let installEvt = null;
 const asApp = () => { try { return window.matchMedia('(display-mode: standalone), (display-mode: window-controls-overlay), (display-mode: minimal-ui)').matches || navigator.standalone === true; } catch(e) { return false; } };
 const macSafari = () => { const u = navigator.userAgent; return /Macintosh/.test(u) && /Version\/(1[7-9]|[2-9]\d)\b.*Safari\//.test(u) && !/Chrome|Chromium|Edg|OPR|Firefox/.test(u) && !('ontouchend' in document); };
@@ -34,16 +34,16 @@ const agoText = t => { if (!t) return ''; const d = Math.floor((new Date().setHo
    joins it without an edit here */
 function titleCredit(){ const bs = shelfBooks().sort((a, b) => a.n - b.n); if (!bs.length) return ''; const last = bs[bs.length - 1];
   return bs.length === 1 ? `Book One, ${bs[0].name}, beside ${bs[0].title}.` : `${last.word} books so far, each beside one of Erikson's Malazan novels, in order, from ${bs[0].title} to ${last.title}, with more to come.`; }
-const bookCh = (b, n) => ((b || 'gotm') === BOOK ? CHAPTERS : (BOOKSNAP[b] || BOOKSNAP.gotm).ch)[n];
+const bookCh = (b, n) => ((b || BOOK) === BOOK ? CHAPTERS : (BOOKSNAP[b] || BOOKSNAP[BOOK]).ch)[n];
 const rdUpT = n => ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'][n] || String(n);
-const chLabel = (e, book = true) => (book && BOOKS[e.book || 'gotm'] ? `Book ${BOOKS[e.book || 'gotm'].word} · ` : '') + (e.done ? 'Finished' : e.ch === 0 ? (e.book ? 'Starting out' : 'The prologue') : `Chapter ${bookCh(e.book, e.ch) ? bookCh(e.book, e.ch).number : e.ch}`) + (e.diff && DIFFS[e.diff] ? ` (${DIFFS[e.diff].name})` : '');
+const chLabel = (e, book = true) => (book && BOOKS[e.book || BOOK] ? `Book ${BOOKS[e.book || BOOK].word} · ` : '') + (e.done ? 'Finished' : e.ch === 0 ? (e.book ? 'Starting out' : 'The prologue') : `Chapter ${bookCh(e.book, e.ch) ? bookCh(e.book, e.ch).number : e.ch}`) + (e.diff && DIFFS[e.diff] ? ` (${DIFFS[e.diff].name})` : '');
 /* Book One sergeants who have finished the book: Book Two can bring their road along (47: dgImport) */
 /* iPhone and iPad keep each home-screen app's saves apart, so sergeants from Ashes of the Pale come across by save code (Ashes 4.9.2 offers
    one for each sergeant on its title). A fresh From the Ranks on an iPhone says so. */
 const IOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 /* the title wears the book played last (the roster's first row), Book One on a new device */
-const titleBookOf = list => { const b = list[0] && list[0].book; return b && BOOKS[b] ? b : 'gotm'; };
-function titleDress(b){ const B = BOOKS[b] || BOOKS.gotm;
+const titleBookOf = list => { const b = list[0] && list[0].book; return b && BOOKS[b] ? b : BOOK; };
+function titleDress(b){ const B = BOOKS[b] || BOOKS[BOOK];
   if (ARTON()) { const el = $('.titleart'); if (el && el.dataset.book !== b) { el.dataset.book = b; el.innerHTML = art(B.titleArt || 'title/key'); } }
   else { const old = $('#titlecv'); if (old && old.dataset.book !== b) { const cv = document.createElement('canvas'); cv.id = 'titlecv'; cv.setAttribute('aria-hidden', 'true'); cv.dataset.book = b; old.replaceWith(cv); startTitleBackdrop(cv, b); } }
   const tp = $('#tPatch'); if (tp && tp.dataset.book !== b) { tp.dataset.book = b; tp.innerHTML = art(B.patch || 'insignia/patch', tpatchCls(B.patch)); }
@@ -100,7 +100,7 @@ function coverSrc(key){ if (!ARTON() || !ART[key]) return '';
   if (!coverSrcs[key]) { const [w, h] = ART_SIZE[key] || [1600, 900]; coverSrcs[key] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(ART[key].replace('<svg ', `<svg width="${w}" height="${h}" `)); }
   return coverSrcs[key]; }
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-const onShelf = (e, b) => (e.book || 'gotm') === b;
+const onShelf = (e, b) => (e.book || BOOK) === b;
 function shelfHTML(list){
   return `<div class="shelf"><div class="rh">${list.length > 1 ? 'Choose a book: its sergeants, or a new one' : list.length ? 'A new sergeant? Choose your book' : 'Choose your book'}</div><div class="covers">${shelfBooks().map(B => {
     const n = list.filter(e => onShelf(e, B.id)).length, src = coverSrc(B.titleArt || 'title/key');
@@ -120,7 +120,7 @@ function showTitle(fresh, want){
   const taken = n => list.find(e => sameName(e.name, n));
   const iosNote = !list.length && IOS() ? `<p class="fine iosnote">Coming from Ashes of the Pale on this iPhone? On its title, tap your sergeant's name under <i>Copy a sergeant's code</i>, then tap <b>Load a backup or save code</b> here and paste it.</p>` : '';
   toTop(); $('#app').innerHTML = `${ARTON() ? `<div class="titleart" aria-hidden="true" data-book="${tb}">${art(TB.titleArt || 'title/key')}</div>` : ''}<canvas id="titlecv" aria-hidden="true" data-book="${tb}" ${ARTON() ? 'hidden' : ''}></canvas>${fullBtn('bFullT').replace('class="btn icon"', 'class="btn icon tfull"')}<div id="title" class="title">
-    <span id="tPatch" data-book="${tb}">${art(TB.patch || 'insignia/patch', tpatchCls(TB.patch))}</span><div class="series">From the Ranks</div><h1 id="tName">${TB.h1[0]}<span>${TB.h1[1]}</span></h1>
+    <span id="tPatch" data-book="${tb}">${art(TB.patch || 'insignia/patch', tpatchCls(TB.patch))}</span><div class="series">A Malazan fan game</div><h1 id="tName">${TB.h1[0]}<span>${TB.h1[1]}</span></h1>
     <p class="tag" id="tTag">${TB.tag}</p>
     ${form ? `<div class="field"><label>Book</label><div class="seg bseg">${Object.values(BOOKS).filter(b => !b.coming || b.id === tb).map(b => `<button class="btn ${b.id === tb ? 'on' : ''}" data-book="${b.id}">Book ${b.word}<small>${b.name}${b.coming ? ' · coming' : ''}</small></button>`).join('')}</div><small class="fine" id="bBlurb">${TB.blurb}</small></div>
     <div id="bookRows">${bookRows(tb)}</div>
@@ -140,7 +140,7 @@ function showTitle(fresh, want){
     : `${shelfHTML(list)}${iosNote}
     <div class="tbtns"><button class="btn" id="bImp">Load a backup or save code</button><button class="btn icon" id="bSet" aria-label="Settings">${GEAR}</button></div>`}
     <div id="instSlot"></div>
-    <p class="fine">From the Ranks: Malazan fan tales told by ordinary soldiers, for personal play. The world was created by Steven Erikson and Ian C. Esslemont, and it and its canon characters belong to them. ${titleCredit()} Sound on for the full effect. <button class="ver" id="bVer" aria-label="What's new in this version">v${VERSION}</button></p></div>`;
+    <p class="fine">Trygalle Run: an unofficial, non-commercial Malazan fan game, built on the From the Ranks engine. The world was created by Steven Erikson and Ian C. Esslemont, and it and its canon characters belong to them. ${titleCredit()} Sound on for the full effect. <button class="ver" id="bVer" aria-label="What's new in this version">v${VERSION}</button></p></div>`;
   if (!ARTON()) startTitleBackdrop($('#titlecv'), tb); else titleAnim = null;
   $('#bSet').onclick = () => { AUDIO.play('click'); openSettings(); };
   $('#bVer').onclick = () => { AUDIO.play('click'); openNotes(null); };
