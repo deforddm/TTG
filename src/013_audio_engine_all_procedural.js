@@ -74,6 +74,9 @@ const AUDIO = (() => {
     /* v13.0 Book Ten (the last: a desert of glass crossed by night, the long way round, and the end of it): the series ends in Book One's
        key, D, one step brighter than its Phrygian (Aeolian); the thin pad of Book Two's desert, war drums slowed almost to a walk with the
        backbeat dropped, Book One's horn for the lead, and a bell louder than Book Nine's for the barrows */
+    ttg:{scale:[0, 2, 3, 5, 7, 9, 10], root:82.41, pad:'saw', wet:.34, drum:'frame', lead:'lowhorn', bellK:.8, // Trygalle Run: E Dorian, a road song
+      inst:{title:['cello', 'reed'], calm:['reed', 'cello', 'glass'], end:['cello', 'glass', 'reed']},
+      bpm:{calm:62, end:50, dread:52, battle:100, dark:86}},
     tcg:{scale:[0, 2, 3, 5, 7, 8, 10], root:73.42, pad:'thin', wet:.34, drum:'war', lead:'horn', bellK:1.2, // D Aeolian
       inst:{title:['glass', 'cello'], calm:['glass', 'cello', 'flute'], end:['bell', 'glass', 'flute']},
       bpm:{title:46, calm:52, end:42, dread:48, battle:94, dark:80},
@@ -101,6 +104,8 @@ const AUDIO = (() => {
          {pats:['K...S..K', 'K..KS...', 'K...S.KK', 'K..KS..s'], fills:['K.S.KSSS', 'KKSSKSSS'], ost:'X..xXo.x'}],
     dod:[{pats:['K.......', 'K.....k.', 'K...k...', 'K.....kk'], fills:['K.k.K.SS', 'K..kKSSS'], ost:'X...f...'}, // a walk: the march east
          {pats:['K.k.K.k.', 'K.k.K.kk', 'K.k.Kk..', 'K.k.K.S.'], fills:['KkKkK.SS', 'K.SSKSSS'], ost:'Xx.xXf.x'}],
+    ttg:[{pats:['K..kK..k', 'K..kK.S.', 'K..kK..k', 'K..kKsS.'], fills:['K.SSK.SS', 'KkSSKSSS'], ost:'X..xX.f.'}, // the gallop under the fights
+         {pats:['KkSKKkS.', 'KkSKKkSs', 'K.SKKkS.', 'KkSKK.Ss'], fills:['KSSSKSSS', 'KkSSKkSS'], ost:'XxbxXxfx'}],
     tcg:[{pats:['K...K.k.', 'K...K...', 'K..kK...', 'K...K.s.'], fills:['K.S.K.SS', 'K..SKSSS'], ost:'X...X.f.'},
          {pats:['K.S.K...', 'K.S.K..s', 'K.S.Kk..', 'K.S.K.S.'], fills:['K.SSKSSS', 'KSKSK.SS'], ost:'X.xfX.xo'}],
   };
@@ -466,7 +471,33 @@ const AUDIO = (() => {
     const le = P0.leadEvery || 4; // battle2's horn moves in half notes
     if (st % le === 0) { if (L.sec === 'full' && chance(P0.dens)) lead(L, t, f(L.motif[L.mi], 1), e * 3.6 * le / 4, P0.hv); if (++L.mi >= 4) { L.mi = 0; if (chance(.5)) L.motif = P0.quote && chance(P0.quote) ? THEME.slice(0, 4).map(n => n[0]) : pick(MOT); } }
   }
+  /* Trygalle Run's title: the carriage on the warren road. Triplet eighths (a 12/8 ride): hooves on the frame drum, the axle's
+     drone under them, a chord every two bars, and its own tune on the cello, answered by the reed. Every few rounds the road
+     tips into a warren: the hooves stop, the chord turns strange, glass shivers over it, and the ride comes back. */
+  const RIDE = [[0, 1.5], [4, 1.5], [3, .5], [2, .5], [3, 2], [0, 1], [5, 1.5], [4, .5], [3, 1], [4, 2], [2, 1], [1, 1], [-1, 1], [0, 3]];
+  const RIDE_PROG = [[0, 4], [-2, 2], [-3, 1], [-2, 2], [0, 4], [3, 5], [-2, 2], [0, 4]];
+  function ride(L, t, s){
+    const e = L.len, pos = s % 3, beat = (s / 3 | 0) % 4, bar = s / 12 | 0, round = bar % 24, warren = round >= 18 && round < 22, D = DRUM.frame;
+    if (s % 24 === 0) { // every two bars: the chord, and the axle's note under it
+      const ch = warren ? (round === 18 ? [1, 5] : [-1, 4]) : RIDE_PROG[(bar >> 1) % RIDE_PROG.length];
+      pad(L, t, ch, e * 24 + .6, warren ? .07 : .055, warren ? 420 : 640);
+      if (!warren) tone(f(ch[0], -1), {t, type:'sawtooth', a:.6, d:e * 22, v:.05, filt:{f:120, pk:260, e:180, q:.7}, to:L.near}); }
+    if (warren) { // the warren: no hooves; glass high and slightly wrong, a swell that pulls
+      if (s % 6 === 0 && chance(.55)) glass(L, t, f(pick([1, 4, 5, 8]), 3) * (chance(.4) ? 1.025 : 1), .035);
+      if (s % 48 === 12) noise({t, a:e * 18, d:.3, v:.08, f:300, slide:1800, type:'lowpass', buf:'b', to:L.near});
+      return; }
+    const lv = bar < 2 ? .45 + bar * .25 : 1; // the hooves come up the road
+    if (pos === 0) D.K(L, t, (beat % 2 ? .55 : .8) * lv); else if (pos === 2) D.K(L, t, .38 * lv);
+    if (pos === 1 && beat === 3 && chance(.5)) D.S(L, t, .35 * lv); // a harness ring
+    if (s % 48 === 30 && chance(.5)) noise({t, a:.08, d:.5, v:.05, f:700, q:6, slide:520, to:L.near, pan:-.3}); // the axle creaks
+    // the tune: once in, round 2 to 9 on the cello; again at round 12, the reed an octave up
+    if (pos === 0 && beat === 0 && (round === 2 || round === 12)) { L.tune = 0; L.tuneAt = s; L.tuneInst = round === 2 ? 'cello' : 'reed'; }
+    if (L.tune != null && L.tune < RIDE.length && pos === 0) { const at = L.tuneAt + RIDE.slice(0, L.tune).reduce((a, n) => a + n[1] * 3, 0);
+      if (s === at) { const [d, n] = RIDE[L.tune]; sing(L.tuneInst, L, t, d, n * e * 3, .95); L.tune++; } }
+    if (round >= 22 || (round > 9 && round < 12)) { if (pos === 0 && beat % 2 === 0 && chance(.4)) glass(L, t, f(pick([0, 2, 4, 7]), 3), .025); }
+  }
   const STYLE = {
+    ttgtitle:{bpm:72, sub:3, fn:ride, lvl:1.7, wet:.4},
     title:{bpm:54, fn:lyric, lvl:2, wet:.45, prog:PL, pv:.06, cut:600, dens:.42, inst:['glass','flute'], bell:.7, bellEvery:8, bellAt:4, bellDeg:[0], bv:.07, secs:[['full',4,3],['thin',3,3],['rest',2,2]]},
     calm:{bpm:60, fn:lyric, lvl:2.4, wet:.4, prog:PL, pv:.065, cut:650, dens:.38, inst:['flute','cello','glass'], bell:.5, bellEvery:16, bellAt:12, bellDeg:[0,-3], bv:.05, secs:[['full',5,4],['thin',4,3],['rest',2,2]]},
     end:{bpm:50, fn:lyric, lvl:1.6, wet:.45, prog:PE, pv:.06, cut:700, dens:.55, inst:['flute','glass','cello'], bell:.6, bellEvery:16, bellAt:0, bellDeg:[0], bv:.06, secs:[['full',6,4],['thin',3,3],['rest',1,1]]},
@@ -711,7 +742,7 @@ const AUDIO = (() => {
   function cue(kind){
     const w = where();
     switch (kind) {
-      case 'title': return {mus:'title', amb:V.key === 'dg' || V.key === 'hoc' ? 'desert' : V.key === 'moi' ? 'snow' : V.key === 'mt' ? 'river_night' : V.key === 'bh' ? 'desert_night' : V.key === 'rg' ? 'sea_night' : V.key === 'tth' ? 'daru_night' : V.key === 'dod' ? 'wastes' : V.key === 'tcg' ? 'glass' : 'wind'};
+      case 'title': if (V.key === 'ttg') return {mus:'ttgtitle', amb:'night'}; return {mus:'title', amb:V.key === 'dg' || V.key === 'hoc' ? 'desert' : V.key === 'moi' ? 'snow' : V.key === 'mt' ? 'river_night' : V.key === 'bh' ? 'desert_night' : V.key === 'rg' ? 'sea_night' : V.key === 'tth' ? 'daru_night' : V.key === 'dod' ? 'wastes' : V.key === 'tcg' ? 'glass' : 'wind'};
       case 'end': return {mus:'end', amb:V.key === 'dg' ? 'sea' : V.key === 'moi' || V.key === 'hoc' ? 'sea_night' : V.key === 'mt' ? 'city_night' : V.key === 'bh' ? 'sea_night' : V.key === 'rg' ? 'city_night' : V.key === 'tth' ? 'lake' : V.key === 'dod' ? 'night' : V.key === 'tcg' ? 'barrow' : 'wind'};
       case 'battle': return {mus:w.id ? fightCue(w.id) : 'battle', amb:battleAmb(w)};
       case 'dark': return w.v === 'battle' ? {mus:'dark', amb:battleAmb(w)} : {mus:'dread', amb:w.sk === 'garden_storm' ? 'storm' : placeAmb(w.sk, true) === 'barrow' ? 'barrow' : w.sk === 'b3_c7_spawn' ? 'spawn' : 'dark'};
