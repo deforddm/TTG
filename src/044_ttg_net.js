@@ -61,7 +61,7 @@ const MP = (() => {
   /* the host starts the run: the first contract, signed as it stands, straight to the Ashway */
   function startRun(){
     if (!st.host || !st.open) return;
-    S = newState(st.name || 'Hask'); S.f.ttg_manifest = 1; S.f.ttg_casket = 'signed'; S.f.ttg_osselIn = 1; S.f.ttg_together = 1; save();
+    S = newState('Hask'); S.f.ttg_manifest = 1; S.f.ttg_casket = 'signed'; S.f.ttg_osselIn = 1; S.f.ttg_together = 1; save();
     startBattle('ttg_ashway', {mp:mpInfo()});
   }
   /* after a run: back to the room, still connected */
@@ -70,7 +70,7 @@ const MP = (() => {
   function showLobby(){
     if (S && !S._guest && view !== 'lobby') save();
     view = 'lobby'; B = null; titleAnim = null; document.body.classList.remove('rt'); $('#sheet').hidden = true; toTop();
-    if (!S) { S = newState(st.name || savedName() || 'Hask'); S._guest = 1; }
+    if (!S) { S = newState('Hask'); S._guest = 1; }
     try { AUDIO.setScene('explore'); } catch (e) {}
     $('#app').innerHTML = `<header class="hud"><div><div class="loc">Play together</div><div class="sub">One carriage, a crew of friends</div></div><div class="hudr"><button class="btn" id="lbTitle">Title</button></div></header><div class="lobby ubar" id="lobby"></div>`;
     $('#lbTitle').onclick = () => { try { AUDIO.play('click'); } catch (e) {} leave(); S = null; showTitle(); };
