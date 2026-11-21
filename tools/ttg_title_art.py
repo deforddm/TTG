@@ -69,8 +69,8 @@ A(f'<rect x="0" y="570" width="{W}" height="{H - 570}" fill="url(#tground)"/>')
 # ---- the tear in the warren (David, Nov 21: "create an obvious tear in the warren they are trying to reach") ----
 # a great ragged gash standing on the road ahead, sky to ground: torn dark edges curling back, another world's light inside,
 # shards of the torn night drifting off it, and its light spilled down the road toward the carriage
-TX, TTOP, TBOT = 1365, 30, 600
-def gash(wid, jag, seed, top=TTOP, bot=TBOT, lean=-190):
+TX, TTOP, TBOT = 1400, 30, 600
+def gash(wid, jag, seed, top=TTOP, bot=TBOT, lean=-90):
     rr = random.Random(seed); L, Rr = [], []
     n = 22
     for i in range(n + 1):
@@ -97,7 +97,7 @@ A(f'<path d="{gash(96, 12, 21)}" fill="none" stroke="#f4fff8" stroke-width="5" o
 rr = random.Random(31)
 for i in range(9):
     t = .1 + .8 * i / 8; y = TTOP + (TBOT - TTOP) * t; sd = -1 if i % 2 else 1
-    w = 96 * math.sin(math.pi * (.02 + .96 * t)) ** 1.05; x = TX + (t - .5) * -190 + sd * (w + 8)
+    w = 96 * math.sin(math.pi * (.02 + .96 * t)) ** 1.05; x = TX + (t - .5) * -90 + sd * (w + 8)
     L = rr.uniform(26, 54)
     A(f'<path d="M{x:.0f},{y - 14:.0f} Q{x + sd * L * .9:.0f},{y - 22:.0f} {x + sd * L:.0f},{y + 6:.0f} Q{x + sd * L * .4:.0f},{y + 4:.0f} {x:.0f},{y + 16:.0f}Z" fill="#0b0912"/>')
     A(f'<path d="M{x:.0f},{y - 14:.0f} Q{x + sd * L * .9:.0f},{y - 22:.0f} {x + sd * L:.0f},{y + 6:.0f}" stroke="#bff0d6" stroke-width="1.6" fill="none" opacity=".55"/>')
@@ -126,7 +126,7 @@ for i in range(14):
 CX, CY = 745, 712   # the body's bottom-left corner; the whole team is drawn here and scaled by the group below
 import subprocess
 GROUND = CY + 64
-A('<g transform="translate(860 650) rotate(-9.4 0 45) scale(.7) translate(-745 -712)">')
+A('<g transform="translate(735 671) rotate(-9.4 0 45) scale(.7) translate(-745 -712)">')
 A(f'<ellipse cx="{CX + 330}" cy="{GROUND}" rx="470" ry="16" fill="#000" opacity=".55" filter="url(#tblur)"/>')
 A('<defs><linearGradient id="tcoach" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2130"/><stop offset=".55" stop-color="#17121c"/><stop offset="1" stop-color="#0c0a10"/></linearGradient>'
   '<linearGradient id="ttarp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3a38"/><stop offset="1" stop-color="#1a1918"/></linearGradient></defs>')
@@ -231,9 +231,9 @@ A('</g>')
 def hound(x, y, s):
     A(f'<path d="M{x - 50 * s},{y} Q{x - 40 * s},{y - 28 * s} {x},{y - 26 * s} Q{x + 30 * s},{y - 30 * s} {x + 46 * s},{y - 40 * s} L{x + 70 * s},{y - 34 * s} L{x + 66 * s},{y - 24 * s} L{x + 46 * s},{y - 20 * s} Q{x + 30 * s},{y - 4 * s} {x + 34 * s},{y + 16 * s} L{x + 26 * s},{y + 18 * s} L{x + 14 * s},{y - 2 * s} L{x - 20 * s},{y - 2 * s} L{x - 44 * s},{y + 16 * s} L{x - 54 * s},{y + 14 * s} L{x - 44 * s},{y - 4 * s} Q{x - 66 * s},{y - 10 * s} {x - 80 * s},{y - 22 * s} Q{x - 60 * s},{y - 8 * s} {x - 50 * s},{y}Z" fill="#0a090e"/>')
     A(f'<circle cx="{x + 58 * s:.0f}" cy="{y - 33 * s:.0f}" r="{2.6 * s:.1f}" fill="#ff7a3a"/><circle cx="{x + 58 * s:.0f}" cy="{y - 33 * s:.0f}" r="{8 * s:.1f}" fill="#ff7a3a" opacity=".3" filter="url(#tblur)"/>')
-hound(800, 714, .62)
-hound(725, 736, .55)
-hound(655, 758, .5)
+hound(685, 734, .62)
+hound(610, 756, .55)
+hound(540, 778, .5)
 
 # embers drifting up from the road
 emb = []

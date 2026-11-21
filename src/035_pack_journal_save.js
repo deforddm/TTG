@@ -196,6 +196,7 @@ function glossHTML(){
 
 /* what's new: shown once after an update (to a player with a save), and again from the version number on the title */
 const NOTES = [ // Trygalle Run's own history. The From the Ranks engine's notes stay with From the Ranks.
+  ['0.7.2', ['On the title, the carriage is a little further back down the road: still racing for the tear, not yet through it.']],
   ['0.7.1', ['On the title, the carriage now runs straight along the road, and the warren it is racing for is torn open on the road ahead: ragged edges, another world\'s light inside, and the lead horses already in its glow.']],
   ['0.7.0', ['New art for the guild, all drawn for Trygalle Run: Tavos in his rain hat with the whip, Mira under her helm with the knotted shield, Quill with her horn bow, Ossel bent over his black staff, and the captain in the guild coat.', 'New faces for all five shareholders on the squad sheet.', 'The guild\'s own coach horses, heavy and feathered, blinkered and in brass-trimmed harness, on the title, in the yard and in the fight. A new carriage, a guild sign over the yard, and new folk in it: the factor, a stable hand and the yard guard.']],
   ['0.6.0', ['A guild carriage never runs on fewer than six horses. The team is matched to the load: six for a light one, nine for a heavier one, twenty for the heaviest. Six on the title, six in every scene, and the whole team in the fight.', 'Each cargo has a weight. When a crate is smashed, the carriage runs a little lighter and faster.']],
