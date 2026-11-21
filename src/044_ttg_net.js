@@ -19,7 +19,7 @@ const MP = (() => {
   const keepName = n => { try { localStorage.setItem('ttg-name', n); } catch (e) {} };
   /* the last room this browser was in, so a dropped or reloaded player can get back with one tap */
   const ROOM_KEY = 'ttg-room', ROOM_TTL = 3 * 3600e3;
-  const keepRoom = () => { try { localStorage.setItem(ROOM_KEY, JSON.stringify({code:st.code, name:st.name, host:st.host, at:Date.now()})); } catch (e) {} };
+  const keepRoom = () => { if (st.local) return; try { localStorage.setItem(ROOM_KEY, JSON.stringify({code:st.code, name:st.name, host:st.host, at:Date.now()})); } catch (e) {} };
   const forgetRoom = () => { try { localStorage.removeItem(ROOM_KEY); } catch (e) {} };
   const recentRoom = () => { try { const r = JSON.parse(localStorage.getItem(ROOM_KEY) || 'null'); return r && r.code && Date.now() - r.at < ROOM_TTL ? r : null; } catch (e) { return null; } };
   function rejoin(){ const r = recentRoom(); if (!r) return; st.rehost = !!r.host; connect(r.code, r.name, !!r.host, true); }
@@ -30,16 +30,17 @@ const MP = (() => {
 
   /* rejoin: a dropped connection (a phone that went to another app, a wifi blip) comes back to the same room on its own.
      The relay gives the new connection a new id; the host hands the shareholders back by the player's name. */
-  function connect(code, name, host, rejoin){
+  function connect(code, name, host, rejoin, transport){
     const keep = rejoin && inRun();
     if (!rejoin) { st.lost = {}; st.retry = 0; st.rehost = false; }
-    leave(true); st.want = true; st.prevMe = keep ? st.me : null;
+    leave(true); st.want = !transport; st.local = !!transport; st.prevMe = keep ? st.me : null;
     st.code = code; st.name = name; st.host = host; st.players = []; if (!keep) st.owners = {}; st.hostId = keep && host ? st.hostId : null; st.status = rejoin ? 'Reconnecting to the room…' : 'Reaching the guild\'s relay…'; st.open = false; keepName(name);
-    let ws; try { ws = new WebSocket(`${relayURL()}/room/${code}?name=${encodeURIComponent(name)}`); } catch (e) { st.status = 'This browser could not open a connection.'; return render(); }
+    let ws; try { ws = transport || new WebSocket(`${relayURL()}/room/${code}?name=${encodeURIComponent(name)}`); } catch (e) { st.status = 'This browser could not open a connection.'; return render(); }
     st.ws = ws; render();
     const timer = setTimeout(() => { if (!st.open && st.ws === ws) { st.status = 'The guild\'s relay did not answer. Check the connection and try again.'; try { ws.close(); } catch (e) {} render(); } }, 8000);
     ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } if (st.ws === ws) onMsg(m); };
     ws.onclose = () => { clearTimeout(timer); if (st.ws !== ws) return; st.ws = null;
+      if (st.open && st.local) { st.status = 'The wifi link was lost. Join again to carry on.'; st.open = false; if (inRun() && !RT.R.mp.host) { RT.R.paused = true; RT.R.pauseReason = 'The wifi link to the host was lost. Join again to carry on.'; } }
       if (st.open) { st.status = 'The connection to the room was lost. Reconnecting…'; st.open = false; if (inRun() && !RT.R.mp.host) { RT.R.paused = true; RT.R.pauseReason = 'Lost the connection. Reconnecting…'; } }
       if (st.want) retryLater(); render(); };
     ws.onerror = () => { if (!st.open) st.status = 'Could not reach the guild\'s relay. Check the connection and try again.'; };
@@ -70,7 +71,7 @@ const MP = (() => {
     if (m.t === 'leave') { m.name = nameOf(m.id); st.players = st.players.filter(p => p.id !== m.id);
       if (st.host) { const had = CREW.filter(k => st.owners[k] === m.id); if (had.length && m.name) st.lost[m.name] = had;
         had.forEach(k => { st.owners[k] = st.me; }); lobbyOut();
-        if (inRun()) { RT.refresh(); RT.R.paused = true; RT.R.pauseReason = `${(m.name || 'A player')} dropped out. Their shareholders are yours until they come back with the same code.`; } }
+        if (inRun()) { RT.refresh(); RT.R.paused = true; RT.R.pauseReason = `${(m.name || 'A player')} dropped out. Their shareholders are yours until they rejoin.`; } }
       else if (m.id === st.hostId) { st.status = 'The host dropped out. Waiting for them to come back.'; st.hostId = null; if (inRun()) { RT.R.paused = true; RT.R.pauseReason = 'The host dropped out. Waiting for them to come back.'; } }
       return render(); }
     if (st.host) { if (m.t === 'cmd' && inRun()) RT.applyCmd(m.from, m.c); return; }
@@ -117,11 +118,11 @@ const MP = (() => {
       const join = () => { const c = ($('#lbCode').value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length !== 4) { st.status = 'A room code is four letters.'; return render(); } try { AUDIO.play('click'); } catch (e) {} connect(c, nm(), false); };
       if ($('#lbRejoin')) $('#lbRejoin').onclick = () => { try { AUDIO.play('click'); } catch (e) {} rejoin(); };
       $('#lbJoin').onclick = join; $('#lbCode').onkeydown = e => { if (e.key === 'Enter') join(); };
-      return; }
+      if (typeof WIFI !== 'undefined') WIFI.decorate(el, false); return; }
     const host = st.host, hostName = host ? st.name : nameOf(st.hostId);
     const opts = k => st.players.map(p => `<option value="${p.id}" ${st.owners[k] === p.id ? 'selected' : ''}>${esc(p.name)}${p.id === st.me ? ' (you)' : ''}</option>`).join('');
-    el.innerHTML = `<div class="lbcode"><span>Room code</span><b>${esc(st.code)}</b></div>
-      <p class="fine">${host ? 'Give this code to the others. They open the game, choose Play together, and type it in.' : open ? `In ${esc(hostName)}'s room.` : ''}</p>
+    el.innerHTML = `${st.local ? `<div class="lbcode"><span>On this wifi</span><b>${host ? 'Host' : 'Joined'}</b></div>` : `<div class="lbcode"><span>Room code</span><b>${esc(st.code)}</b></div>`}
+      <p class="fine">${st.local ? (host ? 'No internet needed. Add each player with a code below.' : `On ${esc(hostName)}'s wifi table.`) : host ? 'Give this code to the others. They open the game, choose Play together, and type it in.' : open ? `In ${esc(hostName)}'s room.` : ''}</p>
       <div class="rh">The crew · ${st.players.length} ${st.players.length === 1 ? 'player' : 'players'}</div>
       <ul class="lbplayers">${st.players.map(p => `<li>${esc(p.name)}${p.id === st.hostId ? ' <small>host</small>' : ''}${p.id === st.me ? ' <small>you</small>' : ''}</li>`).join('')}</ul>
       ${open && st.hostId ? `<div class="rh">Who drives whom</div><div class="lbcrew">${CREW.map(k => `<label for="lbo_${k}">${esc(NAME(k))} <small>${esc(TPL[k] ? (k === 'sgt' ? 'captain' : TPL[k].role || '') : '')}</small></label>${host ? `<select id="lbo_${k}" data-k="${k}">${opts(k)}</select>` : `<span class="own" id="lbo_${k}">${esc(nameOf(st.owners[k]))}${st.owners[k] === st.me ? ' (you)' : ''}</span>`}`).join('')}</div>` : ''}
@@ -129,7 +130,8 @@ const MP = (() => {
       <p class="fine lbmsg" role="status">${esc(st.status || (host ? '' : open ? `Waiting for ${hostName} to start the run.` : ''))}</p>`;
     if (host) { el.querySelectorAll('select[data-k]').forEach(s => s.onchange = () => { st.owners[s.dataset.k] = s.value; lobbyOut(); });
       $('#lbStart').onclick = () => { try { AUDIO.play('click'); } catch (e) {} startRun(); }; }
-    $('#lbLeave').onclick = () => { try { AUDIO.play('click'); } catch (e) {} leave(); render(); };
+    $('#lbLeave').onclick = () => { try { AUDIO.play('click'); } catch (e) {} leave(); if (typeof WIFI !== 'undefined') WIFI.reset(); render(); };
+    if (typeof WIFI !== 'undefined') WIFI.decorate(el, true);
   }
   return {connect, rejoin, recentRoom, leave, send, nameOf, mpInfo, showLobby, startRun, render, st, CREW};
 })();

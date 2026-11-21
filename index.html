@@ -738,6 +738,16 @@ body.rt #app{max-width:1100px}
 .lbcrew .own{font-family:var(--label)}
 .lbmsg{min-height:1.2em;color:var(--brass2)}
 .rtcard.other{opacity:.7;cursor:default}
+/* playing on one wifi */
+.lbwifi{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line2);padding-top:14px;margin-top:6px}
+.lbqr{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.lbqr .qr{width:min(78vw,300px);background:#fff;border-radius:4px;line-height:0}
+.lbqr .qr svg{width:100%;height:auto;display:block}
+.lbqr input{font-size:.8rem}
+.lbmsg.bad{color:#e08a7a}
+.lbscan{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px}
+.lbscan video{width:min(92vw,480px);max-height:70vh;border-radius:4px;background:#000}
+.lbscan p{color:#eee;margin:0;font-family:var(--label);letter-spacing:.06em}
 </style>
 <style>[hidden]{display:none!important}body{margin:0}</style>
 </head><body>
@@ -754,7 +764,7 @@ body.rt #app{max-width:1100px}
 <div class="flash" id="flash"></div>
 <div class="red" id="red"></div>
 <script>
-const VERSION = '0.2.4';
+const VERSION = '0.3.0';
 
 /* ============ utilities ============ */
 const $ = s => document.querySelector(s);
@@ -11992,7 +12002,7 @@ const MP = (() => {
   const keepName = n => { try { localStorage.setItem('ttg-name', n); } catch (e) {} };
   /* the last room this browser was in, so a dropped or reloaded player can get back with one tap */
   const ROOM_KEY = 'ttg-room', ROOM_TTL = 3 * 3600e3;
-  const keepRoom = () => { try { localStorage.setItem(ROOM_KEY, JSON.stringify({code:st.code, name:st.name, host:st.host, at:Date.now()})); } catch (e) {} };
+  const keepRoom = () => { if (st.local) return; try { localStorage.setItem(ROOM_KEY, JSON.stringify({code:st.code, name:st.name, host:st.host, at:Date.now()})); } catch (e) {} };
   const forgetRoom = () => { try { localStorage.removeItem(ROOM_KEY); } catch (e) {} };
   const recentRoom = () => { try { const r = JSON.parse(localStorage.getItem(ROOM_KEY) || 'null'); return r && r.code && Date.now() - r.at < ROOM_TTL ? r : null; } catch (e) { return null; } };
   function rejoin(){ const r = recentRoom(); if (!r) return; st.rehost = !!r.host; connect(r.code, r.name, !!r.host, true); }
@@ -12003,16 +12013,17 @@ const MP = (() => {
 
   /* rejoin: a dropped connection (a phone that went to another app, a wifi blip) comes back to the same room on its own.
      The relay gives the new connection a new id; the host hands the shareholders back by the player's name. */
-  function connect(code, name, host, rejoin){
+  function connect(code, name, host, rejoin, transport){
     const keep = rejoin && inRun();
     if (!rejoin) { st.lost = {}; st.retry = 0; st.rehost = false; }
-    leave(true); st.want = true; st.prevMe = keep ? st.me : null;
+    leave(true); st.want = !transport; st.local = !!transport; st.prevMe = keep ? st.me : null;
     st.code = code; st.name = name; st.host = host; st.players = []; if (!keep) st.owners = {}; st.hostId = keep && host ? st.hostId : null; st.status = rejoin ? 'Reconnecting to the room…' : 'Reaching the guild\'s relay…'; st.open = false; keepName(name);
-    let ws; try { ws = new WebSocket(`${relayURL()}/room/${code}?name=${encodeURIComponent(name)}`); } catch (e) { st.status = 'This browser could not open a connection.'; return render(); }
+    let ws; try { ws = transport || new WebSocket(`${relayURL()}/room/${code}?name=${encodeURIComponent(name)}`); } catch (e) { st.status = 'This browser could not open a connection.'; return render(); }
     st.ws = ws; render();
     const timer = setTimeout(() => { if (!st.open && st.ws === ws) { st.status = 'The guild\'s relay did not answer. Check the connection and try again.'; try { ws.close(); } catch (e) {} render(); } }, 8000);
     ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } if (st.ws === ws) onMsg(m); };
     ws.onclose = () => { clearTimeout(timer); if (st.ws !== ws) return; st.ws = null;
+      if (st.open && st.local) { st.status = 'The wifi link was lost. Join again to carry on.'; st.open = false; if (inRun() && !RT.R.mp.host) { RT.R.paused = true; RT.R.pauseReason = 'The wifi link to the host was lost. Join again to carry on.'; } }
       if (st.open) { st.status = 'The connection to the room was lost. Reconnecting…'; st.open = false; if (inRun() && !RT.R.mp.host) { RT.R.paused = true; RT.R.pauseReason = 'Lost the connection. Reconnecting…'; } }
       if (st.want) retryLater(); render(); };
     ws.onerror = () => { if (!st.open) st.status = 'Could not reach the guild\'s relay. Check the connection and try again.'; };
@@ -12043,7 +12054,7 @@ const MP = (() => {
     if (m.t === 'leave') { m.name = nameOf(m.id); st.players = st.players.filter(p => p.id !== m.id);
       if (st.host) { const had = CREW.filter(k => st.owners[k] === m.id); if (had.length && m.name) st.lost[m.name] = had;
         had.forEach(k => { st.owners[k] = st.me; }); lobbyOut();
-        if (inRun()) { RT.refresh(); RT.R.paused = true; RT.R.pauseReason = `${(m.name || 'A player')} dropped out. Their shareholders are yours until they come back with the same code.`; } }
+        if (inRun()) { RT.refresh(); RT.R.paused = true; RT.R.pauseReason = `${(m.name || 'A player')} dropped out. Their shareholders are yours until they rejoin.`; } }
       else if (m.id === st.hostId) { st.status = 'The host dropped out. Waiting for them to come back.'; st.hostId = null; if (inRun()) { RT.R.paused = true; RT.R.pauseReason = 'The host dropped out. Waiting for them to come back.'; } }
       return render(); }
     if (st.host) { if (m.t === 'cmd' && inRun()) RT.applyCmd(m.from, m.c); return; }
@@ -12090,11 +12101,11 @@ const MP = (() => {
       const join = () => { const c = ($('#lbCode').value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length !== 4) { st.status = 'A room code is four letters.'; return render(); } try { AUDIO.play('click'); } catch (e) {} connect(c, nm(), false); };
       if ($('#lbRejoin')) $('#lbRejoin').onclick = () => { try { AUDIO.play('click'); } catch (e) {} rejoin(); };
       $('#lbJoin').onclick = join; $('#lbCode').onkeydown = e => { if (e.key === 'Enter') join(); };
-      return; }
+      if (typeof WIFI !== 'undefined') WIFI.decorate(el, false); return; }
     const host = st.host, hostName = host ? st.name : nameOf(st.hostId);
     const opts = k => st.players.map(p => `<option value="${p.id}" ${st.owners[k] === p.id ? 'selected' : ''}>${esc(p.name)}${p.id === st.me ? ' (you)' : ''}</option>`).join('');
-    el.innerHTML = `<div class="lbcode"><span>Room code</span><b>${esc(st.code)}</b></div>
-      <p class="fine">${host ? 'Give this code to the others. They open the game, choose Play together, and type it in.' : open ? `In ${esc(hostName)}'s room.` : ''}</p>
+    el.innerHTML = `${st.local ? `<div class="lbcode"><span>On this wifi</span><b>${host ? 'Host' : 'Joined'}</b></div>` : `<div class="lbcode"><span>Room code</span><b>${esc(st.code)}</b></div>`}
+      <p class="fine">${st.local ? (host ? 'No internet needed. Add each player with a code below.' : `On ${esc(hostName)}'s wifi table.`) : host ? 'Give this code to the others. They open the game, choose Play together, and type it in.' : open ? `In ${esc(hostName)}'s room.` : ''}</p>
       <div class="rh">The crew · ${st.players.length} ${st.players.length === 1 ? 'player' : 'players'}</div>
       <ul class="lbplayers">${st.players.map(p => `<li>${esc(p.name)}${p.id === st.hostId ? ' <small>host</small>' : ''}${p.id === st.me ? ' <small>you</small>' : ''}</li>`).join('')}</ul>
       ${open && st.hostId ? `<div class="rh">Who drives whom</div><div class="lbcrew">${CREW.map(k => `<label for="lbo_${k}">${esc(NAME(k))} <small>${esc(TPL[k] ? (k === 'sgt' ? 'captain' : TPL[k].role || '') : '')}</small></label>${host ? `<select id="lbo_${k}" data-k="${k}">${opts(k)}</select>` : `<span class="own" id="lbo_${k}">${esc(nameOf(st.owners[k]))}${st.owners[k] === st.me ? ' (you)' : ''}</span>`}`).join('')}</div>` : ''}
@@ -12102,7 +12113,8 @@ const MP = (() => {
       <p class="fine lbmsg" role="status">${esc(st.status || (host ? '' : open ? `Waiting for ${hostName} to start the run.` : ''))}</p>`;
     if (host) { el.querySelectorAll('select[data-k]').forEach(s => s.onchange = () => { st.owners[s.dataset.k] = s.value; lobbyOut(); });
       $('#lbStart').onclick = () => { try { AUDIO.play('click'); } catch (e) {} startRun(); }; }
-    $('#lbLeave').onclick = () => { try { AUDIO.play('click'); } catch (e) {} leave(); render(); };
+    $('#lbLeave').onclick = () => { try { AUDIO.play('click'); } catch (e) {} leave(); if (typeof WIFI !== 'undefined') WIFI.reset(); render(); };
+    if (typeof WIFI !== 'undefined') WIFI.decorate(el, true);
   }
   return {connect, rejoin, recentRoom, leave, send, nameOf, mpInfo, showLobby, startRun, render, st, CREW};
 })();
@@ -12116,6 +12128,181 @@ const MP = (() => {
     b.onclick = () => { try { AUDIO.play('click'); } catch (e) {} S = null; MP.showLobby(); }; host.prepend(b);
     const r = MP.recentRoom(); if (r && !$('#bRejoin')) { const j = document.createElement('button'); j.className = 'btn primary'; j.id = 'bRejoin'; j.textContent = `Rejoin room ${r.code}`;
       j.onclick = () => { try { AUDIO.play('click'); } catch (e) {} S = null; MP.showLobby(); MP.rejoin(); }; host.prepend(j); b.className = 'btn'; } } } } catch (e) { console.warn('together button', e); }
+  return r; }; }
+
+/* ============ Trygalle Run: playing together on one wifi, no internet ============
+   The relay needs the internet. On a wifi with no internet the browsers talk straight to each other (WebRTC data channels).
+   Browsers cannot find each other on their own, so each player and the host swap one code each, by QR or by copy and paste:
+   the host's code (an offer) goes to the player, the player's code (an answer) comes back. The host then acts as the relay:
+   the same messages (hello/join/leave, lobby/snap/cmd) travel over the data channels, so the game above does not know the
+   difference. The codes hold only what a connection needs (ICE user and password, the DTLS fingerprint, local addresses).
+   QR drawing (vendor/qrcode.js, MIT) and reading (vendor/jsQR.js, Apache-2.0) load on first use and are precached for offline. */
+const WIFI = (() => {
+  const st = {mode:'', offer:'', answer:'', status:'', busy:false, pending:null, guest:null};
+  const rid = () => Math.random().toString(16).slice(2, 10);
+  const b64u = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const unb64u = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))));
+  const hex2b = h => btoa(h.split(':').map(x => String.fromCharCode(parseInt(x, 16))).join(''));
+  const b2hex = b => [...atob(b)].map(c => c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')).join(':');
+
+  /* ---- the short codes ---- */
+  function pack(sdp, extra){
+    const g = re => (sdp.match(re) || [])[1] || '';
+    const c = [...sdp.matchAll(/a=candidate:\S+ \d+ udp \d+ (\S+) (\d+) typ (host|srflx)/gi)].map(m => [m[1], +m[2]]);
+    return Object.assign({u:g(/a=ice-ufrag:(\S+)/), p:g(/a=ice-pwd:(\S+)/), f:hex2b(g(/a=fingerprint:sha-256 (\S+)/)), c}, extra);
+  }
+  function unpack(o, type){
+    const L = ['v=0', `o=- ${Date.now()} 2 IN IP4 127.0.0.1`, 's=-', 't=0 0', 'a=group:BUNDLE 0', 'a=msid-semantic: WMS',
+      'm=application 9 UDP/DTLS/SCTP webrtc-datachannel', 'c=IN IP4 0.0.0.0'];
+    o.c.forEach(([ip, port], i) => L.push(`a=candidate:${i + 1} 1 udp ${2122260223 - i} ${ip} ${port} typ host generation 0`));
+    L.push(`a=ice-ufrag:${o.u}`, `a=ice-pwd:${o.p}`, `a=fingerprint:sha-256 ${b2hex(o.f)}`, `a=setup:${type === 'offer' ? 'actpass' : 'active'}`,
+      'a=mid:0', 'a=sctp-port:5000', 'a=max-message-size:262144');
+    return {type, sdp: L.join('\r\n') + '\r\n'};
+  }
+  const encode = o => 'TTG1' + b64u(JSON.stringify(o));
+  function decode(text, kind){
+    let s = String(text || '').trim(); const h = s.indexOf('#wifi='); if (h >= 0) s = s.slice(h + 6);
+    s = s.replace(/\s+/g, ''); if (!s.startsWith('TTG1')) throw new Error('That is not a Trygalle Run wifi code.');
+    const o = JSON.parse(unb64u(s.slice(4))); if (o.k !== kind) throw new Error(kind === 'o' ? 'That is a player\'s code. Scan the host\'s code here.' : 'That is the host\'s code. Scan the player\'s code here.');
+    return o;
+  }
+  const linkFor = code => `${location.origin}${location.pathname}#wifi=${code}`;
+  /* no ICE servers at all: on one wifi the local addresses are enough, and offline there is nothing else to reach */
+  const newPC = () => new RTCPeerConnection({iceServers:[]});
+  const gathered = pc => new Promise(res => { if (pc.iceGatheringState === 'complete') return res();
+    const t = setTimeout(res, 3000); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); });
+  const deliver = (t, m) => { if (t.onmessage) t.onmessage({data: JSON.stringify(m)}); };
+
+  /* ---- the host: one peer connection per player; the host's page plays the relay ---- */
+  function hostTransport(name){
+    const me = rid(), peers = new Map(); // id -> {pc, dc, name}
+    const t = {readyState:1, me, name, peers, onmessage:null, onclose:null, onerror:null,
+      send(str){ let m; try { m = JSON.parse(str); } catch (e) { return; } m.from = me; const out = JSON.stringify(m);
+        peers.forEach((p, id) => { if (p.dc && p.dc.readyState === 'open' && (!m.to || m.to === id)) try { p.dc.send(out); } catch (e) {} }); },
+      close(){ if (t.readyState === 3) return; t.readyState = 3; peers.forEach(p => { try { p.pc.close(); } catch (e) {} }); peers.clear(); setTimeout(() => t.onclose && t.onclose(), 0); }};
+    setTimeout(() => deliver(t, {t:'hello', you:me, peers:[]}), 0);
+    return t;
+  }
+  async function makeOffer(t){
+    const id = rid(), pc = newPC(), dc = pc.createDataChannel('ttg', {ordered:true});
+    const p = {pc, dc, name:'', id}; t.peers.set(id, p);
+    dc.onopen = () => { if (t.readyState !== 1) return; deliver(t, {t:'join', id, name:p.name || 'Shareholder'}); st.pending = null; st.offer = ''; st.status = `${p.name || 'A player'} is in.`; MP.render(); };
+    dc.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } m.from = id; deliver(t, m); };
+    let gone = false; const drop = () => { if (gone) return; gone = true; const was = dc.readyState; t.peers.delete(id); if (p.joined !== false && t.readyState === 1 && p.opened) deliver(t, {t:'leave', id}); };
+    dc.addEventListener('open', () => { p.opened = true; });
+    dc.onclose = drop; pc.onconnectionstatechange = () => { if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) { if (pc.connectionState !== 'disconnected') drop(); } };
+    await pc.setLocalDescription(await pc.createOffer()); await gathered(pc);
+    return {id, code: encode(pack(pc.localDescription.sdp, {k:'o', i:id, h:t.name}))};
+  }
+  async function takeAnswer(t, text){
+    const o = decode(text, 'a'), p = t.peers.get(o.i); if (!p) throw new Error('That code answers an older host code. Make a new one.');
+    p.name = String(o.n || 'Shareholder').slice(0, 18); await p.pc.setRemoteDescription(unpack(o, 'answer'));
+  }
+
+  /* ---- a player: answer the host's offer; once the channel opens it behaves like the relay ---- */
+  async function makeAnswer(text, name){
+    const o = decode(text, 'o'), pc = newPC();
+    const t = {readyState:0, onmessage:null, onclose:null, onerror:null, send(str){ if (t.dc && t.dc.readyState === 'open') try { t.dc.send(str); } catch (e) {} },
+      close(){ if (t.readyState === 3) return; t.readyState = 3; try { pc.close(); } catch (e) {} setTimeout(() => t.onclose && t.onclose(), 0); }};
+    pc.ondatachannel = e => { const dc = t.dc = e.channel;
+      dc.onopen = () => { t.readyState = 1; st.mode = ''; st.answer = ''; st.status = ''; MP.connect('WIFI', name, false, false, t);
+        setTimeout(() => deliver(t, {t:'hello', you:o.i, peers:[{id:'host', name:o.h || 'the host'}]}), 0); };
+      dc.onmessage = ev => { if (t.readyState === 1 && t.onmessage) t.onmessage({data: ev.data}); };
+      dc.onclose = () => t.close(); };
+    pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') { st.status = 'The two devices could not reach each other. Check you are on the same wifi, then try a new code.'; MP.render(); t.close(); } };
+    await pc.setRemoteDescription(unpack(o, 'offer')); await pc.setLocalDescription(await pc.createAnswer()); await gathered(pc);
+    st.guest = t; return {host:o.h, code: encode(pack(pc.localDescription.sdp, {k:'a', i:o.i, n:name}))};
+  }
+
+  /* ---- QR codes: draw and read ---- */
+  const loaded = {};
+  const load = src => loaded[src] || (loaded[src] = new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => { delete loaded[src]; rej(new Error('Could not load ' + src)); }; document.head.appendChild(s); }));
+  async function qrSVG(text){ await load('vendor/qrcode.js'); const q = qrcode(0, 'L'); q.addData(text); q.make(); return q.createSvgTag({cellSize:4, margin:3, scalable:true}); }
+  let scanStop = null;
+  async function scan(){
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('This browser cannot use the camera here. Paste the code instead.');
+    const bd = ('BarcodeDetector' in window) ? await BarcodeDetector.getSupportedFormats().then(f => f.includes('qr_code') ? new BarcodeDetector({formats:['qr_code']}) : null).catch(() => null) : null;
+    if (!bd) await load('vendor/jsQR.js');
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false});
+    const ov = document.createElement('div'); ov.className = 'lbscan';
+    ov.innerHTML = `<video playsinline muted></video><p>Point the camera at the code</p><button class="btn" type="button">Cancel</button>`;
+    document.body.appendChild(ov); const v = ov.querySelector('video'); v.srcObject = stream; await v.play().catch(() => {});
+    const cv = document.createElement('canvas'), cx = cv.getContext('2d', {willReadFrequently:true});
+    return new Promise((res, rej) => {
+      let done = false; const end = (val, err) => { if (done) return; done = true; scanStop = null; stream.getTracks().forEach(k => k.stop()); ov.remove(); err ? rej(err) : res(val); };
+      scanStop = () => end(null, new Error('cancelled')); ov.querySelector('button').onclick = scanStop;
+      const tick = async () => { if (done) return;
+        try { if (v.readyState >= 2 && v.videoWidth) {
+          if (bd) { const r = await bd.detect(v); if (r[0] && r[0].rawValue) return end(r[0].rawValue); }
+          else { const w = Math.min(720, v.videoWidth), h = Math.round(w * v.videoHeight / v.videoWidth); cv.width = w; cv.height = h; cx.drawImage(v, 0, 0, w, h);
+            const r = jsQR(cx.getImageData(0, 0, w, h).data, w, h, {inversionAttempts:'dontInvert'}); if (r && r.data) return end(r.data); } } } catch (e) {}
+        setTimeout(tick, 120); };
+      tick();
+    });
+  }
+
+  /* ---- the screens: added to the Play together lobby ---- */
+  const say = (m, err) => { st.status = m; st.err = !!err; MP.render(); };
+  const why = e => (e && e.message) || 'Something went wrong. Try again.';
+  const codeBox = (code, label) => `<div class="lbqr" data-code="${esc(code)}"><div class="qr" aria-label="${esc(label)}"></div>
+    <div class="lbrow"><input type="text" readonly value="${esc(code)}" aria-label="${esc(label)} as text"><button class="btn" type="button" data-copy>Copy</button></div></div>`;
+  const pasteRow = (id, what) => `<div class="field"><label for="${id}">${what}</label><div class="lbrow"><button class="btn primary" type="button" id="${id}Scan">Scan it</button><input type="text" id="${id}" placeholder="or paste it here" autocomplete="off" spellcheck="false"><button class="btn" type="button" id="${id}Go">Use</button></div></div>`;
+  function wire(el){
+    el.querySelectorAll('.lbqr').forEach(b => { const code = b.dataset.code; qrSVG(linkFor(code)).then(svg => { b.querySelector('.qr').innerHTML = svg; }).catch(() => { b.querySelector('.qr').textContent = 'The QR picture could not be drawn. Use the text code.'; });
+      b.querySelector('[data-copy]').onclick = () => { const i = b.querySelector('input'); i.select(); (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject()).catch(() => { try { document.execCommand('copy'); } catch (e) {} }); }; });
+  }
+  const nm = () => { const i = $('#lbName'); return ((i && i.value) || MP.st.name || '').trim().slice(0, 18) || 'Shareholder'; };
+  function decorate(el, connected){
+    const S_ = MP.st;
+    if (!connected) {
+      if (st.mode === 'join') {
+        el.innerHTML = `<div class="rh">Join on this wifi</div>
+          ${st.answer ? `<p class="txt">Now show this to ${esc(st.hostName || 'the host')}. They scan it (or paste it) under Add a player.</p>${codeBox(st.answer, 'Your answer code')}<p class="fine">Waiting for the host…</p>`
+            : `<p class="txt">On the host's screen, under Add a player, there is a QR code. Scan it here, or with your phone's camera app.</p>${pasteRow('wfOffer', 'The host\'s code')}`}
+          <p class="fine lbmsg${st.err ? ' bad' : ''}" role="status">${esc(st.status || '')}</p>
+          <div class="lbrow"><button class="btn" type="button" id="wfBack">Back</button></div>`;
+        $('#wfBack').onclick = () => { reset(); MP.render(); };
+        if (!st.answer) { const use = v => { if (!v) return; say('Making your answer…'); makeAnswer(v, st.name || nm()).then(r => { st.answer = r.code; st.hostName = r.host; say(''); }).catch(e => say(why(e), true)); };
+          $('#wfOfferGo').onclick = () => use($('#wfOffer').value); $('#wfOffer').onkeydown = e => { if (e.key === 'Enter') use($('#wfOffer').value); };
+          $('#wfOfferScan').onclick = () => scan().then(use).catch(e => { if (e.message !== 'cancelled') say(why(e), true); }); }
+        wire(el); return;
+      }
+      const box = document.createElement('div'); box.className = 'lbwifi';
+      box.innerHTML = `<div class="rh">No internet? Play on one wifi</div>
+        <p class="fine">Phones and computers on the same wifi can play with no internet. Everyone needs to have opened the game once before, and the host and each player swap a QR code, so the host needs a camera (a phone, or a computer with a webcam), or a way to paste.</p>
+        <div class="lbrow"><button class="btn" type="button" id="wfHost">Host on this wifi</button><button class="btn" type="button" id="wfJoin">Join on this wifi</button></div>`;
+      el.appendChild(box);
+      $('#wfHost').onclick = () => { try { AUDIO.play('click'); } catch (e) {} reset(); const n = nm(); MP.connect('WIFI', n, true, false, hostTransport(n)); };
+      $('#wfJoin').onclick = () => { try { AUDIO.play('click'); } catch (e) {} reset(); st.mode = 'join'; st.name = nm(); MP.render(); };
+      return;
+    }
+    if (!S_.local || !S_.host || !S_.open || !S_.ws) return;
+    const box = document.createElement('div'); box.className = 'lbwifi';
+    box.innerHTML = `<div class="rh">Add a player</div>` + (st.offer
+      ? `<p class="txt">On their device: Play together, Join on this wifi, then scan this. Their phone's camera app works too.</p>${codeBox(st.offer, 'Host code')}${pasteRow('wfAns', 'Then scan or paste their answer')}`
+      : `<p class="fine">One code per player. Make one, let them scan it, then scan the answer they show you.</p><div class="lbrow"><button class="btn" type="button" id="wfAdd">Make a code for a player</button></div>`)
+      + `<p class="fine lbmsg${st.err ? ' bad' : ''}" role="status">${esc(st.status || '')}</p>`;
+    const lv = el.querySelector('#lbLeave'); el.insertBefore(box, lv ? lv.closest('.lbrow') : null);
+    if (!st.offer) $('#wfAdd').onclick = () => { say('Making a code…'); makeOffer(S_.ws).then(r => { st.offer = r.code; st.pending = r.id; say(''); }).catch(e => say(why(e), true)); };
+    else { const use = v => { if (!v) return; say('Connecting…'); takeAnswer(S_.ws, v).then(() => say('Connecting… this takes a few seconds.')).catch(e => say(why(e), true)); };
+      $('#wfAnsGo').onclick = () => use($('#wfAns').value); $('#wfAns').onkeydown = e => { if (e.key === 'Enter') use($('#wfAns').value); };
+      $('#wfAnsScan').onclick = () => scan().then(use).catch(e => { if (e.message !== 'cancelled') say(why(e), true); }); }
+    wire(el);
+  }
+  function reset(){ if (scanStop) scanStop(); if (st.guest && st.guest.readyState !== 1) try { st.guest.close(); } catch (e) {} Object.assign(st, {mode:'', offer:'', answer:'', status:'', err:false, pending:null, guest:null}); }
+
+  /* opened from the host's QR with the phone's own camera app: straight to the answer */
+  function fromLink(){ const h = location.hash; if (!h.startsWith('#wifi=')) return false; const code = h.slice(6);
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    reset(); st.mode = 'join'; S = null; MP.showLobby(); st.name = MP.st.name || (localStorage.getItem('ttg-name') || '') || 'Shareholder';
+    say('Making your answer…'); makeAnswer(code, st.name).then(r => { st.answer = r.code; st.hostName = r.host; say(''); }).catch(e => say(why(e), true)); return true; }
+
+  return {decorate, reset, fromLink, makeOffer, takeAnswer, makeAnswer, hostTransport, encode, decode, st};
+})();
+
+/* a QR scanned with the camera app opens the game at #wifi=…: once the title is up, go straight to joining */
+{ const _showTitle = showTitle; let tried = false; showTitle = function(){ const r = _showTitle.apply(this, arguments);
+  if (!tried && location.hash.startsWith('#wifi=')) { tried = true; setTimeout(() => { try { WIFI.fromLink(); } catch (e) { console.warn('wifi link', e); } }, 0); }
   return r; }; }
 
 /* ============ v13.4 toughness reset (David, Nov 12-13, 2026; series-polish-plan.md §0c.1) ============

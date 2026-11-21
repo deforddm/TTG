@@ -1,8 +1,8 @@
-const CACHE = 'ttg-v0.2.4'; // backups: a save file that survives a cleared browser
+const CACHE = 'ttg-v0.3.0'; // backups: a save file that survives a cleared browser
 const FONTS = 'ttg-fonts'; // Google Fonts, kept across versions so the typography survives offline play
 const PAGE = './'; // the 2.5 MB game, precached at './' (Cloudflare Pages redirects /index.html to /, and a redirected response
 // answering a navigation makes Chrome show ERR_FAILED). './' and './index.html' are answered from it.
-const ASSETS = [PAGE, './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
+const ASSETS = [PAGE, './manifest.webmanifest', './vendor/qrcode.js', './vendor/jsQR.js', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 /* A new version installs and then WAITS. The page shows "Update ready"; tapping it posts 'skip', and only then
    does the new version take over (the page reloads itself on controllerchange). Never skipWaiting on install. */
 /* the typography, fetched at install so the first offline launch already has it: the stylesheet the page asks for (same URL,
