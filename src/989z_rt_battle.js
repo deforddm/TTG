@@ -435,7 +435,7 @@ const RT = (() => {
     if (R.anchorT > 0) { ctx.fillStyle = `rgba(154,134,224,${.06 + .03 * Math.sin(now / 300)})`; ctx.fillRect(0, 0, L.cols * T, L.rows * T); }
     if (R.paused && !R.result) { ctx.fillStyle = 'rgba(13,11,10,.22)'; ctx.fillRect(0, 0, L.cols * T, L.rows * T); }
   }
-  /* the carriage, from above: black lacquer gone grey at the edges, brass trim, the guild's knot on the door, two horses ahead */
+  /* the carriage, from above: black lacquer gone grey at the edges, brass trim, the guild's knot on the door, the team ahead (the guild's own horses, 048) */
   function drawCarriage(now, s){
     const T = L.T, x0 = carX() * T, y0 = R.carriage.y * T, w = CW * T, h = CHH * T, moving = R.carriage.anim < 1;
     // the team: ranks of horses ahead of the box, two abreast for six, three for nine, four for twenty (the first five ranks drawn)
@@ -444,12 +444,8 @@ const RT = (() => {
     for (let j = 0; j < abreast; j++) { const ty = y0 + h * (j + .5) / abreast; ctx.moveTo(x0 + w, y0 + h * .5); ctx.lineTo(hx + T * .3, ty); ctx.moveTo(hx + T * .3, ty); ctx.lineTo(hx + T * .3 + rl * (Math.min(ranks, 5) - 1), ty); }
     ctx.stroke();
     for (let r = 0; r < Math.min(ranks, 5); r++) for (let j = 0; j < abreast && r * abreast + j < team; j++) {
-      const i = r * abreast + j, cy = y0 + h * (j + .5) / abreast, bx = hx + r * rl, bob = moving ? Math.sin(now / 90 + i * 2) * T * .03 : 0, hc = (i % 3) === 1 ? '#4a3020' : (i % 3) === 2 ? '#2e1c12' : '#3a2418', k = abreast > 2 ? .8 : 1;
-      ctx.globalAlpha = r < 4 ? 1 : .55;
-      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(bx + T * .42, cy + T * .06, T * .46, T * .18 * k, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = hc; ctx.beginPath(); ctx.ellipse(bx + T * .36 + bob, cy, T * .36, T * .15 * k, 0, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(bx + T * .76 + bob, cy, T * .15, T * .09 * k, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = '#1a120c'; ctx.fillRect(bx + T * .26 + bob, cy - T * .025, T * .44, T * .05); ctx.globalAlpha = 1; }
+      const i = r * abreast + j, cy = y0 + h * (j + .5) / abreast, bx = hx + r * rl, bob = moving ? Math.sin(now / 90 + i * 2) * T * .03 : 0, hc = TTG_COATS[i % TTG_COATS.length];
+      ctx.globalAlpha = r < 4 ? 1 : .55; ttgHorseTop(ctx, bx + T * .4, cy + bob * .3, T * .8, hc, now, moving, i); ctx.globalAlpha = 1; }
     // wheels
     ctx.fillStyle = '#17120e'; [[.12, -.06], [.12, 1.06], [.82, -.06], [.82, 1.06]].forEach(([a, b]) => { ctx.fillRect(x0 + w * a - T * .22, y0 + h * b - T * .07, T * .44, T * .14); });
     // shadow and body

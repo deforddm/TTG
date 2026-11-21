@@ -165,20 +165,20 @@ A(f'<path d="M{CX - 4},{CY - 104} Q{CX - 30},{CY - 108} {CX - 58},{CY - 98}" str
 # wheels last, over the body's foot
 wheel(*RW); wheel(*FW)
 
-# ---- four horses at a full gallop: From the Ranks' own horse (beastHorse, 017b), drawn through tools/ttg_horse_svg.js ----
-HS = 12  # beastHorse units to picture units: withers about 90 up
+# ---- six horses at a full gallop: Trygalle Run's own coach horse (ttgHorseParts, src/048_ttg_art.js), drawn through tools/ttg_horse_svg.js ----
+HS = 11  # horse units to picture units: withers about 92 up
 # six: the fewest a guild carriage ever runs on (David, Nov 21, 2026); three pairs, the far horse of each pair a step up the road and darker
-spec = [{'run': 1 + (i % 2), 'col': '#211b2c' if i < 3 else INK, 'mane': '#07060a'} for i in range(6)]
+spec = [{'gait': 'run', 'ph': [.08, .46, .71][i % 3] + (.0 if i < 3 else .2), 'col': '#211b2c' if i < 3 else INK, 'mane': '#07060a', 'feather': '#3a3448' if i < 3 else '#2c2834', 'far': i < 3} for i in range(6)]
 frag = json.loads(subprocess.check_output(['node', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ttg_horse_svg.js'), json.dumps(spec)]))
-PX = [CX + 446, CX + 612, CX + 778]   # wheelers, swing pair, leaders
+PX = [CX + 450, CX + 625, CX + 800]   # wheelers, swing pair, leaders
 team = [(PX[i] + 40, GROUND - 22, frag[i]) for i in range(3)] + [(PX[i], GROUND, frag[3 + i]) for i in range(3)]
 # the pole and the traces, behind the near horses
 A(f'<path d="M{CX + 350},{CY - 30} L{CX + 470},{GROUND - 74}" stroke="{INK}" stroke-width="5"/>')
 A(f'<path d="M{CX + 340},{CY - 46} L{CX + 400},{GROUND - 70} M{CX + 500},{GROUND - 76} L{CX + 560},{GROUND - 74} M{CX + 666},{GROUND - 76} L{CX + 726},{GROUND - 74}" stroke="{INK}" stroke-width="2.6"/>')
 for i, (hx, hy, svg) in enumerate(team):
     A(f'<g transform="translate({hx} {hy}) scale({HS})">{svg}</g>')
-    if i >= 2:  # harness on the near horses: collar, breast strap, warren light along the back
-        A(f'<g transform="translate({hx} {hy}) scale({HS})"><path d="M4.4 -8.2 Q5.6 -6.4 5.2 -4.8" stroke="#3a3240" stroke-width=".55" fill="none"/><path d="M-3.6 -8.7 Q-.4 -7.7 2.7 -8.5" stroke="#9fe0c0" stroke-opacity=".55" stroke-width=".22" fill="none"/><path d="M5 -6.4 L-2 -6.2" stroke="#3a3240" stroke-width=".3"/></g>')
+    if i >= 3:  # warren light along the near horses' backs
+        A(f'<g transform="translate({hx} {hy}) scale({HS})"><path d="M-4.2 -9.75 Q-1.5 -9.95 1.2 -9.55" stroke="#9fe0c0" stroke-opacity=".55" stroke-width=".22" fill="none"/></g>')
 # the reins from the driver's hands to the leaders
 A(f'<path d="M{CX + 350},{CY - 98} Q{CX + 520},{GROUND - 150} {CX + 878},{GROUND - 126}" stroke="{INK}" stroke-width="1.4" fill="none"/>')
 

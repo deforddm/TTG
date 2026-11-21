@@ -7,24 +7,59 @@ Object.assign(SCENES, {
   ttg_gate:{loc:'The yard gate', sub:'Ossel\'s gate', cap:'The gate is still a gate, and then it is not.', amb:'explore', warren:1},
   ttg_kan:{loc:'Kan', sub:'The buyer\'s yard · the far side', cap:'Real rain, real stone, and a clerk with a ledger under an oilcloth.', amb:'explore'},
 });
-/* a side view of the carriage and its two horses, facing right, wheels on the ground line y */
+/* a side view of the carriage and its team, facing right, wheels on the ground line y. Drawn for Trygalle Run (v0.7.0): a tall black coach
+   with brass banding, a warm door window and the guild's knot, cargo lashed on the roof under a tarred cloth, the driver's box up front with
+   its lantern, iron-shod wheels on leaf springs, and the guild's own coach horses (048) in pairs: six at the least, a guild carriage never runs on fewer. */
+const TTG_COATS = ['#4a2a1a', '#2a1c16', '#5e3a22', '#1c1614', '#6a625a', '#3e2618', '#54341e', '#241a16', '#5a4a3a', '#3a2418'];
 function ttgCarriageSide(ctx, x, y, s, t, moving, opt = {}){
-  const bob = moving ? Math.sin(t / 90) * 1.2 : 0;
-  // the team: six at the least (a guild carriage never runs on fewer), three pairs, From the Ranks' horse (017b), the far horse of each pair a step up and darker
-  const team = Math.max(6, opt.team || 6), pairs = Math.min(5, Math.ceil(team / 2)), k = 3.3*s;
-  ctx.strokeStyle = '#1a120c'; ctx.lineWidth = 1.2*s; ctx.beginPath(); ctx.moveTo(x + 62*s, y - 18*s); ctx.lineTo(x + (78 + 40*(pairs - 1) + 8)*s, y - 22*s); ctx.stroke(); // traces
-  for (let p = pairs - 1; p >= 0; p--) [1, 0].forEach(far => { const hx = x + (84 + 40*p + far*4)*s, hy = y - far*3*s, ph = (t / 260 + p*.7 + far*.35) % 2;
-    ctx.save(); ctx.translate(hx, hy + (moving ? Math.sin(t / 90 + p + far) * .8*s : 0)); ctx.scale(k, k);
-    beastHorse(ctx, far ? '#24170f' : (p % 2 ? '#3a2418' : '#33200f'), moving ? {run:ph < 1 ? 1 : 2, mane:'#140c08'} : {g:Math.sin(t / 600 + p), mane:'#140c08'}); ctx.restore(); });
-  // body
-  const g = ctx.createLinearGradient(0, y - 52*s, 0, y - 10*s); g.addColorStop(0, '#2e2622'); g.addColorStop(1, '#120e0c'); ctx.fillStyle = g;
-  ctx.fillRect(x, y - 50*s, 60*s, 36*s); ctx.strokeStyle = '#8a6a32'; ctx.lineWidth = 1.2*s; ctx.strokeRect(x, y - 50*s, 60*s, 36*s);
-  ctx.fillStyle = '#4a3622'; ctx.fillRect(x + 56*s, y - 36*s, 12*s, 3*s); // the bench
-  ctx.fillStyle = 'rgba(255,190,110,.18)'; ctx.fillRect(x + 22*s, y - 44*s, 14*s, 12*s); // the door window
-  ctx.strokeStyle = 'rgba(232,192,115,.75)'; ctx.lineWidth = 1*s; ctx.beginPath(); ctx.arc(x + 26*s, y - 24*s, 3.2*s, 0, 7); ctx.arc(x + 31*s, y - 24*s, 3.2*s, 0, 7); ctx.stroke(); // the guild's knot
-  ctx.fillStyle = '#5a4630'; ctx.fillRect(x + 4*s, y - 58*s, 16*s, 8*s); ctx.fillRect(x + 24*s, y - 56*s, 12*s, 6*s); // crates lashed on the roof
-  [[12, 0], [50, 0]].forEach(([wx]) => { ctx.strokeStyle = '#17120e'; ctx.lineWidth = 2.4*s; ctx.beginPath(); ctx.arc(x + wx*s, y - 9*s, 9*s, 0, 7); ctx.stroke();
-    ctx.lineWidth = 1*s; for (let k = 0; k < 4; k++) { const a = k * Math.PI / 4 + (moving ? t / 300 : 0); ctx.beginPath(); ctx.moveTo(x + wx*s - Math.cos(a)*9*s, y - 9*s - Math.sin(a)*9*s); ctx.lineTo(x + wx*s + Math.cos(a)*9*s, y - 9*s + Math.sin(a)*9*s); ctx.stroke(); } });
+  const team = Math.max(6, opt.team || 6), pairs = Math.min(5, Math.ceil(team / 2)), k = 3.7 * s, bob = moving ? Math.sin(t / 95) * 1.1 * s : 0, X = v => x + v * s, Y = v => y + v * s;
+  // the pole and traces
+  ctx.strokeStyle = '#1a120c'; ctx.lineWidth = 1.6 * s; ctx.beginPath(); ctx.moveTo(X(64), Y(-14)); ctx.lineTo(X(94 + 62 * (pairs - 1) + 14), Y(-24)); ctx.stroke();
+  for (let p = pairs - 1; p >= 0; p--) [1, 0].forEach(far => { const i = p * 2 + far, hx = X(94 + 62 * p + far * 7), hy = Y(-far * 4);
+    ctx.save(); ctx.translate(hx, hy); ctx.scale(k, k);
+    const col = far ? taMix(TTG_COATS[i % TTG_COATS.length], -.35) : TTG_COATS[i % TTG_COATS.length];
+    ttgHorse(ctx, moving ? {gait:'run', ph:t / 520 + p * .13 + far * .31, col, far:!!far, sock:i % 3 === 0, blaze:i % 4 === 1, t}
+                         : {gait:'stand', g:Math.max(0, Math.sin(t / 1500 + i * 1.9)) * .6, col, far:!!far, sock:i % 3 === 0, blaze:i % 4 === 1, t});
+    ctx.restore(); });
+  ctx.save(); ctx.translate(0, bob);
+  // under the body: the perch between the axles and the leaf springs
+  ctx.strokeStyle = '#120d0a'; ctx.lineWidth = 2.2 * s; ctx.beginPath(); ctx.moveTo(X(10), Y(-11)); ctx.lineTo(X(56), Y(-9)); ctx.stroke();
+  [[12, -12], [54, -10]].forEach(([wx, wy]) => { ctx.strokeStyle = '#2a2420'; ctx.lineWidth = 1.4 * s; ctx.beginPath(); ctx.ellipse(X(wx), Y(wy - 4), 7 * s, 2.4 * s, 0, 0, 7); ctx.stroke(); });
+  // the body: tall, the lower edge swept up at both ends
+  const body = new Path2D(); body.moveTo(X(1), Y(-22)); body.quadraticCurveTo(X(-2), Y(-40), X(2), Y(-58)); body.lineTo(X(52), Y(-58)); body.quadraticCurveTo(X(57), Y(-40), X(54), Y(-22)); body.quadraticCurveTo(X(28), Y(-14), X(1), Y(-22)); body.closePath();
+  ctx.fillStyle = taGrad(ctx, 0, Y(-58), 0, Y(-16), [[0, '#2e2828'], [.4, '#1a1616'], [1, '#0c0a0a']]); ctx.fill(body);
+  ctx.save(); ctx.clip(body);
+  ctx.fillStyle = 'rgba(255,255,255,.05)'; ctx.fillRect(X(0), Y(-58), 60 * s, 8 * s); // lacquer catching the light
+  [[8, -40, 2.6], [44, -30, 3.4], [30, -50, 2], [16, -26, 3]].forEach(([sx, sy, r]) => { ctx.fillStyle = 'rgba(120,110,100,.18)'; ctx.beginPath(); ctx.ellipse(X(sx), Y(sy), r * s, r * .4 * s, .4, 0, 7); ctx.fill(); }); // scrubbed marks
+  ctx.restore();
+  ctx.strokeStyle = '#a8803e'; ctx.lineWidth = 1.2 * s; ctx.stroke(body);
+  ctx.strokeStyle = 'rgba(201,161,90,.55)'; ctx.lineWidth = .7 * s; ctx.strokeRect(X(6), Y(-54), 14 * s, 26 * s); ctx.strokeRect(X(36), Y(-54), 13 * s, 26 * s); // the panels
+  // the door, its window glowing, the knot below it
+  ctx.fillStyle = '#100c0c'; ctx.fillRect(X(22), Y(-55), 12 * s, 34 * s); ctx.strokeStyle = '#c9a15a'; ctx.lineWidth = .8 * s; ctx.strokeRect(X(22), Y(-55), 12 * s, 34 * s);
+  ctx.fillStyle = taRad(ctx, X(28), Y(-46), 0, 9 * s, [[0, 'rgba(255,200,120,.75)'], [1, 'rgba(200,120,50,.25)']]); ctx.fillRect(X(23.5), Y(-53), 9 * s, 10 * s);
+  ctx.strokeStyle = '#100c0c'; ctx.lineWidth = .6 * s; ctx.beginPath(); ctx.moveTo(X(28), Y(-53)); ctx.lineTo(X(28), Y(-43)); ctx.stroke();
+  TF.knot(ctx, X(28), Y(-33), 2.3 * s, 'rgba(232,192,115,.85)', .8 * s);
+  ctx.fillStyle = '#c9a15a'; ctx.fillRect(X(32), Y(-38), 1.2 * s, 2.4 * s); // the handle
+  ctx.fillStyle = '#2a2420'; ctx.fillRect(X(23), Y(-19), 10 * s, 1.4 * s); // the step
+  // the roof: a rail, the cargo lashed under tarred cloth, a strongbox banded in iron
+  ctx.fillStyle = '#241e1c'; ctx.fillRect(X(-1), Y(-60), 56 * s, 2.4 * s);
+  ctx.strokeStyle = '#8a6a32'; ctx.lineWidth = .8 * s; ctx.beginPath(); ctx.moveTo(X(0), Y(-64)); ctx.lineTo(X(54), Y(-64)); for (let i = 0; i <= 6; i++) { ctx.moveTo(X(i * 9), Y(-60)); ctx.lineTo(X(i * 9), Y(-64)); } ctx.stroke();
+  ctx.fillStyle = '#3a3026'; ctx.beginPath(); ctx.moveTo(X(4), Y(-60)); ctx.quadraticCurveTo(X(6), Y(-72), X(16), Y(-71)); ctx.quadraticCurveTo(X(26), Y(-73), X(30), Y(-60)); ctx.closePath(); ctx.fill(); // the cloth over the crates
+  ctx.strokeStyle = '#8a7a5a'; ctx.lineWidth = .6 * s; ctx.beginPath(); ctx.moveTo(X(9), Y(-60)); ctx.lineTo(X(12), Y(-71)); ctx.moveTo(X(22), Y(-60)); ctx.lineTo(X(20), Y(-71.6)); ctx.stroke();
+  ctx.fillStyle = '#4a3622'; ctx.fillRect(X(33), Y(-69), 14 * s, 9 * s); ctx.fillStyle = '#5a5450'; ctx.fillRect(X(36), Y(-69), 1.4 * s, 9 * s); ctx.fillRect(X(43), Y(-69), 1.4 * s, 9 * s); ctx.fillStyle = '#c9a15a'; ctx.fillRect(X(39.4), Y(-66), 2 * s, 2 * s); // the strongbox
+  // the driver's box: the seat, the footboard, the lantern on its bracket
+  ctx.fillStyle = '#3a2a1c'; ctx.fillRect(X(53), Y(-44), 14 * s, 3 * s); ctx.fillStyle = '#241a12'; ctx.fillRect(X(54), Y(-58), 3 * s, 14 * s);
+  ctx.strokeStyle = '#1a120c'; ctx.lineWidth = 1.6 * s; ctx.beginPath(); ctx.moveTo(X(66), Y(-42)); ctx.lineTo(X(72), Y(-28)); ctx.lineTo(X(57), Y(-24)); ctx.stroke();
+  ctx.strokeStyle = '#2a2420'; ctx.lineWidth = .9 * s; ctx.beginPath(); ctx.moveTo(X(52), Y(-56)); ctx.lineTo(X(58), Y(-56)); ctx.lineTo(X(58), Y(-53)); ctx.stroke();
+  const fl = .8 + Math.sin(t / 170) * .1; ctx.fillStyle = taRad(ctx, X(58), Y(-50), 0, 14 * s, [[0, `rgba(255,190,110,${.45 * fl})`], [1, 'rgba(255,190,110,0)']]); ctx.fillRect(X(44), Y(-64), 28 * s, 28 * s);
+  ctx.fillStyle = '#2a2420'; ctx.fillRect(X(56.4), Y(-53), 3.2 * s, 5 * s); ctx.fillStyle = '#ffd890'; ctx.fillRect(X(57), Y(-52.2), 2 * s, 3.4 * s);
+  ctx.restore();
+  // the wheels: iron tyres, spokes, brass hubs, big behind and smaller in front
+  [[12, 11, 12], [54, 8, 10]].forEach(([wx, r, n]) => { const cx = X(wx), cy = Y(-r);
+    ctx.strokeStyle = '#2a201a'; ctx.lineWidth = 1 * s; for (let i = 0; i < n; i++) { const a = i * Math.PI * 2 / n + (moving ? t / (r * 22) : 0); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * r * s, cy + Math.sin(a) * r * s); ctx.stroke(); }
+    ctx.strokeStyle = '#3a2a1c'; ctx.lineWidth = 2.2 * s; ctx.beginPath(); ctx.arc(cx, cy, (r - 1) * s, 0, 7); ctx.stroke();
+    ctx.strokeStyle = '#16120e'; ctx.lineWidth = 1.2 * s; ctx.beginPath(); ctx.arc(cx, cy, r * s, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#c9a15a'; ctx.beginPath(); ctx.arc(cx, cy, 1.8 * s, 0, 7); ctx.fill(); ctx.fillStyle = '#2a201a'; ctx.beginPath(); ctx.arc(cx, cy, .7 * s, 0, 7); ctx.fill(); });
 }
 function ttgNight(ctx, W, H, t, opt = {}){
   const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, opt.dawn ? '#3a4048' : '#070a14'); g.addColorStop(1, opt.dawn ? '#1c1e22' : '#0b0c10'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -33,17 +68,27 @@ function ttgNight(ctx, W, H, t, opt = {}){
   ctx.fillStyle = opt.dawn ? '#24262a' : '#141218'; ctx.fillRect(0, H * .28, W, H * .44);
   for (let i = 0; i < 9; i++) { ctx.fillStyle = opt.dawn ? '#2c2e33' : '#1a1820'; ctx.fillRect(i * W / 8 - 6, H * .28, 12, H * .44); }
   if (!opt.dawn) [.12, .46, .8].forEach((k, i) => { const x = W * k; ctx.fillStyle = '#222'; ctx.fillRect(x - 1, H * .3, 2, H * .4); glow(ctx, x, H * .3, 46, '#6aa0ff', .45 + Math.sin(t / 700 + i) * .05); ell(ctx, x, H * .3, 4, 5, '#bcd4ff'); });
+  // the guild house (v0.7.0): stone courses, the stable's arch with straw-light inside, and the guild's sign on its iron bracket
+  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1; for (let r = 0; r < 8; r++) { const yy = H * (.3 + r * .052); ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(W, yy); ctx.stroke();
+    for (let i = 0; i < 26; i++) { const xx = (i + (r % 2) * .5) * W / 24; ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx, yy + H * .052); ctx.stroke(); } }
+  if (!opt.dawn) { const ax = W * .9, aw = Math.min(W * .12, 90), ah = H * .3, ay = H * .72;
+    ctx.fillStyle = '#0a0806'; ctx.beginPath(); ctx.moveTo(ax - aw / 2, ay); ctx.lineTo(ax - aw / 2, ay - ah * .6); ctx.quadraticCurveTo(ax, ay - ah * 1.05, ax + aw / 2, ay - ah * .6); ctx.lineTo(ax + aw / 2, ay); ctx.fill();
+    glow(ctx, ax, ay - ah * .2, aw * .8, '#e8a050', .28); ctx.fillStyle = '#6a5428'; ctx.fillRect(ax - aw * .4, ay - ah * .14, aw * .8, ah * .14); // straw
+    ctx.strokeStyle = '#3a3438'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ax - aw / 2, ay); ctx.lineTo(ax - aw / 2, ay - ah * .6); ctx.quadraticCurveTo(ax, ay - ah * 1.05, ax + aw / 2, ay - ah * .6); ctx.lineTo(ax + aw / 2, ay); ctx.stroke();
+    const sx = W * .3, sy = H * .36, sw = Math.sin(t / 1300) * .05; ctx.strokeStyle = '#1a1614'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx - 30, H * .31); ctx.lineTo(sx + 2, H * .31); ctx.stroke();
+    ctx.save(); ctx.translate(sx, H * .31); ctx.rotate(sw); ctx.strokeStyle = '#1a1614'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(-12, 6); ctx.moveTo(12, 0); ctx.lineTo(12, 6); ctx.stroke();
+    ctx.fillStyle = '#2a1e16'; ctx.fillRect(-17, 6, 34, 20); ctx.strokeStyle = '#a8803e'; ctx.lineWidth = 1.2; ctx.strokeRect(-17, 6, 34, 20); TF.knot(ctx, 0, 16, 5, '#e2c07a', 1.6); ctx.restore(); }
   // cobbles
   const cg = ctx.createLinearGradient(0, H * .72, 0, H); cg.addColorStop(0, opt.dawn ? '#2a2a2c' : '#121218'); cg.addColorStop(1, opt.dawn ? '#1a1a1c' : '#08080a'); ctx.fillStyle = cg; ctx.fillRect(0, H * .72, W, H * .28);
   ctx.strokeStyle = 'rgba(255,255,255,.05)'; for (let i = 0; i < 60; i++) { ctx.beginPath(); ctx.ellipse(hash(i, 7) * W, H * .74 + hash(i, 8) * H * .26, 9, 3, 0, 0, 7); ctx.stroke(); }
 }
-SCENEX.ttg_yard = (cv, t) => { const {ctx, W, H} = sceneFit(cv); ttgNight(ctx, W, H, t); ttgCarriageSide(ctx, W * .5 - 140, H * .9, 1.3, t, false);
+SCENEX.ttg_yard = (cv, t) => { const {ctx, W, H} = sceneFit(cv); ttgNight(ctx, W, H, t); ttgCarriageSide(ctx, W * .5 - 151, H * .9, 1.15, t, false);
   drawFigure(ctx, 'sgt', W * .22, H * .95, 1.9, t, {dir:1}); drawFigure(ctx, 'mira', W * .44, H * .93, 1.7, t, {dir:1, phase:2}); };
 SCENEX.ttg_counting = (cv, t) => { const {ctx, W, H} = sceneFit(cv), fl = .85 + Math.sin(t / 110) * .06;
   const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1e1610'); g.addColorStop(1, '#0c0806'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   for (let i = 0; i < 14; i++) { const x = i * W / 13; ctx.fillStyle = '#140e0a'; ctx.fillRect(x, 0, 3, H * .62); } // panelling
   for (let r = 0; r < 4; r++) for (let i = 0; i < 18; i++) { if (hash(i, r) < .2) continue; ctx.fillStyle = ['#3a2a1c', '#2a3a2a', '#4a2a22', '#2c2a3a'][(i + r) % 4]; ctx.fillRect(W * .62 + i * 9, H * (.08 + r * .13), 7, H * .1); } // ledgers on the shelves
-  drawFigure(ctx, 'pell', W * .5, H * .66, 2, t, {dir:-1, still:true}); // the factor, behind the desk
+  drawFigure(ctx, 'ttg_factor', W * .5, H * .66, 2, t, {dir:-1, still:true}); // the factor, behind the desk
   ctx.fillStyle = '#3e2c1c'; ctx.fillRect(W * .24, H * .62, W * .52, H * .08); ctx.fillStyle = '#26180e'; ctx.fillRect(W * .28, H * .7, W * .44, H * .3);
   ctx.fillStyle = '#e6dac2'; ctx.fillRect(W * .38, H * .595, 34, 6); ctx.fillStyle = '#3a3a40'; ctx.fillRect(W * .6, H * .55, 20, 12); ctx.strokeStyle = '#9c9cae'; ctx.lineWidth = 1; ctx.strokeRect(W * .6, H * .55, 20, 12); // manifest, casket
   glow(ctx, W * .3, H * .52, W * .4, '#ffb060', .42 * fl); ell(ctx, W * .3, H * .57, 3, 7, '#e8d8a8'); poly(ctx, [[W * .3 - 2, H * .53], [W * .3 + 2, H * .53], [W * .3 + Math.sin(t / 90), H * .53 - 9 * fl]], '#fff1c2');
@@ -56,7 +101,7 @@ SCENEX.ttg_gate = (cv, t) => { const {ctx, W, H} = sceneFit(cv); ttgNight(ctx, W
   const cx = W * .74, r = H * .34 * (1 + Math.sin(t / 400) * .03); glow(ctx, cx, H * .55, r * 1.6, '#9a86e0', .55); ctx.fillStyle = '#3a3438'; ctx.beginPath(); ctx.ellipse(cx, H * .55, r * .55, r, 0, 0, 7); ctx.fill();
   ctx.strokeStyle = '#c9bbff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, H * .55, r * .55, r, 0, 0, 7); ctx.stroke();
   for (let i = 0; i < 6; i++) { ctx.fillStyle = '#1a1614'; ctx.fillRect(cx - r * .4 + i * r * .14, H * .55 + r * .2 - hash(i, 3) * r * .5, 4, hash(i, 3) * r * .5); } // standing stones beyond
-  ttgCarriageSide(ctx, W * .5 - 150, H * .9, 1.2, t, true); drawFigure(ctx, 'ossel', W * .5 - 175, H * .95, 1.8, t, {dir:1}); };
-SCENEX.ttg_kan = (cv, t) => { const {ctx, W, H} = sceneFit(cv); ttgNight(ctx, W, H, t, {dawn:true}); ttgCarriageSide(ctx, W * .5 - 120, H * .9, 1.25, t, false);
+  ttgCarriageSide(ctx, W * .5 - 145, H * .9, 1.1, t, true); drawFigure(ctx, 'ossel', W * .5 - 166, H * .95, 1.8, t, {dir:1}); };
+SCENEX.ttg_kan = (cv, t) => { const {ctx, W, H} = sceneFit(cv); ttgNight(ctx, W, H, t, {dawn:true}); ttgCarriageSide(ctx, W * .5 - 145, H * .9, 1.1, t, false);
   const sq = SQUAD().filter(id => id !== 'tavos'); sq.forEach((id, i) => drawFigure(ctx, id, W * .12 + i * 34, H * .96 - (i % 2) * 3, 1.7, t, {dir:1, phase:i}));
   ctx.strokeStyle = 'rgba(190,200,215,.35)'; ctx.lineWidth = 1; for (let i = 0; i < 90; i++) { const x = (hash(i, 1) * W + t * .12) % W, y = (hash(i, 2) * H + t * .5) % H; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 2, y + 9); ctx.stroke(); } };

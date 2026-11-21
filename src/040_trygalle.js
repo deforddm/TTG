@@ -24,7 +24,7 @@ Object.defineProperty(TPL.sgt, 'quest', {configurable:true, get(){ return 'Bring
 
 const TTG_TPL = {
   tavos:{name:'Tavos', role:'Shareholder · Driver', sig:'D', col:'#c9a35a', hp:18, ac:13, atk:3, dmg:[1,6,1], rng:1, mv:5, init:2, st:{might:1, wits:3, guile:1}, ab:['salve'],
-    fig:'garrow', epithet:'Eleven runs. Still talks to the horses first.', origin:'Gadrobi Hills', age:47, service:'Eleven runs, all of them on the bench', height:'Short, broad, and bowed at the knee from the bench.',
+    fig:'ttg_tavos', epithet:'Eleven runs. Still talks to the horses first.', origin:'Gadrobi Hills', age:47, service:'Eleven runs, all of them on the bench', height:'Short, broad, and bowed at the knee from the bench.',
     weapon:'A long whip and a short knife', armour:'Oiled leather and a hat with a brim wide enough to hold rain',
     bio:'The guild\'s oldest driver on this side of the lake. He has taken carriages through warrens with no ground, warrens with too much, and one that was all teeth. The horses trust him. Nobody else is sure he notices people.',
     bio2:'He has eleven shares and will not sell one. Asked why, he says he is waiting for a twelfth. Asked what then, he says he will think about it.',
@@ -34,7 +34,7 @@ const TTG_TPL = {
     banter:['"Keep them off the horses, Captain. The crates I can replace."', '"Feel that? Ground\'s gone soft. We\'re close to a seam."', '"Eleven runs. You want to know the trick? Don\'t stop."'],
     rel:{mira:'Calls her "the door." She lets him.', quill:'Shares the bench with her. Neither talks.', ossel:'Trusts his gates. Does not trust his face when he opens them.'}},
   mira:{name:'Mira', role:'Shareholder · Warden', sig:'W', col:'#cfc6b4', hp:26, ac:16, atk:4, dmg:[1,8,2], rng:1, mv:4, init:0, st:{might:3, wits:1, guile:0}, ab:['salve'],
-    fig:'brisk', epithet:'Shield on her arm, a share in her boot.', origin:'Cawn, Quon Tali', age:31, service:'Seven runs. Two carriages lost under her, both crews home.', height:'Tall. The carriage door is shorter than she is.',
+    fig:'ttg_mira', epithet:'Shield on her arm, a share in her boot.', origin:'Cawn, Quon Tali', age:31, service:'Seven runs. Two carriages lost under her, both crews home.', height:'Tall. The carriage door is shorter than she is.',
     weapon:'Broad-bladed spear and a rimmed shield painted with the guild\'s knot', armour:'Scale over leather, and a helm she keeps on in the yard',
     bio:'Came to the guild from a caravan company that paid her in promises. The guild pays in shares, and she has never been late collecting. She stands at the carriage door in every fight and nothing has come through it yet.',
     bio2:'Her sister runs a bakery in the Gadrobi District that Mira\'s shares paid for. She has never told her sister what the guild does. Her sister thinks it is shipping.',
@@ -44,7 +44,7 @@ const TTG_TPL = {
     banter:['"I\'ll take the door, Captain. You take the decisions."', '"Whatever comes, comes through me first. That\'s the job."', '"Seven runs and I still hate the smell of a warren opening."'],
     rel:{tavos:'Covers his blind side without asking.', quill:'Calls her "the little hawk." Means it kindly.', ossel:'Stands between him and anything, whether he likes it or not.'}},
   quill:{name:'Quill', role:'Shareholder · Marksman', sig:'M', col:'#8fb3a0', hp:14, ac:13, atk:5, dmg:[1,8,1], rng:5, mv:5, init:3, st:{might:0, wits:2, guile:3}, ab:['salve'],
-    fig:'ellis', epithet:'Rides the roof. Misses less than the rain.', origin:'Genabaris', age:23, service:'Three runs, all on the roof', height:'Slight. Folds up small on the roof rail.',
+    fig:'ttg_quill', epithet:'Rides the roof. Misses less than the rain.', origin:'Genabaris', age:23, service:'Three runs, all on the roof', height:'Slight. Folds up small on the roof rail.',
     weapon:'A recurved horn bow and forty grey-fletched arrows', armour:'Quilted jacket, nothing that rings',
     bio:'Youngest shareholder on the carriage and the best shot in the Darujhistan house. Says very little, and most of it about wind.',
     bio2:'She bought her first share with a purse she will not explain. Tavos thinks she won it. Mira thinks she stole it. Ossel knows, and says nothing.',
@@ -54,7 +54,7 @@ const TTG_TPL = {
     banter:['"Roof, Captain. I see more from there."', '"Wind\'s wrong in here. It blows from everywhere."', '"Point. I\'ll do the rest."'],
     rel:{tavos:'Shares the bench and the silence.', mira:'Lets Mira fuss. Pretends not to.', ossel:'He taught her to watch the seams. She watches him instead.'}},
   ossel:{name:'Ossel', role:'Shareholder · Seam-reader, the carriage\'s mage', sig:'O', col:'#a08de0', hp:13, ac:12, atk:3, dmg:[1,6,1], rng:4, mv:4, init:1, st:{might:0, wits:3, guile:2}, ab:['salve'], magic:true,
-    fig:'mammot', epithet:'Opens the gates. Holds them shut when it matters.', origin:'Pale, before Pale fell', age:61, service:'Twenty runs. More than any mage living in the house.', height:'Stooped, and getting more so.',
+    fig:'ttg_ossel', epithet:'Opens the gates. Holds them shut when it matters.', origin:'Pale, before Pale fell', age:61, service:'Twenty runs. More than any mage living in the house.', height:'Stooped, and getting more so.',
     weapon:'A staff of black wood and the warrens themselves, carefully', armour:'A coat with too many pockets',
     bio:'Every carriage needs a mage to open the way and close it after. Ossel has opened more gates than anyone in the house and believes, quietly, that he has used up most of his luck.',
     bio2:'He was a scholar at Pale when the city still had scholars. He came south with a library in a handcart and sold it book by book to buy his first share. He still has the last book. He has not read it.',
@@ -68,8 +68,7 @@ Object.assign(TPL, TTG_TPL);
 Object.keys(TTG_TPL).forEach(id => { STATUP[id] = id === 'mira' ? ['might', 'wits'] : ['wits', 'guile']; });
 STATUP.sgt = ['wits', 'might'];
 PORDER.length = 0; PORDER.push(...TTG_SQUAD);
-/* faces: the engine's portraits, worn by the shareholders until they have their own */
-Object.entries({tavos:'vell', mira:'brisk', quill:'ellis', ossel:'ohl'}).forEach(([id, look]) => { if (POR[look]) POR[id] = POR[look]; });
+/* faces and figures: the shareholders' own, drawn for Trygalle Run (048) */
 
 /* level-3 talents: each one is read by the real-time battle (032) */
 Object.assign(PICKS[3], {
@@ -102,6 +101,3 @@ new MutationObserver(() => { if (ttgWords.busy) return; ttgWords.busy = true; tr
   .observe(document.getElementById('app'), {childList:true, subtree:true, characterData:true});
 setBook('ttg');
 
-/* the shareholders wear FTR's figures: anywhere the engine draws a squadmate by id (the map, the backdrops), it gets their look */
-const TTG_FIG = {tavos:'garrow', mira:'brisk', quill:'ellis', ossel:'mammot'};
-{ const _drawFigure = drawFigure; drawFigure = function(ctx, kind, ...rest){ return _drawFigure.call(this, ctx, TTG_FIG[kind] || kind, ...rest); }; }

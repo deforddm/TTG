@@ -48,10 +48,10 @@ const TTG_CH1 = {
           "################" ],
     walk:'.,', triggers:{C:'ttg_c1_factor', W:'ttg_c1_carriage'},
     start:{x:7, y:8},
-    folk:[{x:2, y:4, kind:'b2soldier', name:'A stable hand', line:'They know. Horses always know when it\'s a warren run. Look at their ears.', wander:1},
-          {x:12, y:2, kind:'guard', name:'The yard guard', line:'Gate opens at the bell. After that it\'s Ossel\'s gate, not mine.'}],
+    folk:[{x:2, y:4, kind:'ttg_hand', name:'A stable hand', line:'They know. Horses always know when it\'s a warren run. Look at their ears.', wander:1},
+          {x:12, y:2, kind:'ttg_guard', name:'The yard guard', line:'Gate opens at the bell. After that it\'s Ossel\'s gate, not mine.'}],
     npcs:[
-      {id:'ressel', name:'Factor Ressel', kind:'pell', x:5, y:2, node:()=>S.f.ttg_manifest ? 'ttg_c1_factor_again' : 'ttg_c1_factor', fresh:()=>!S.f.ttg_manifest},
+      {id:'ressel', name:'Factor Ressel', kind:'ttg_factor', x:5, y:2, node:()=>S.f.ttg_manifest ? 'ttg_c1_factor_again' : 'ttg_c1_factor', fresh:()=>!S.f.ttg_manifest},
       {id:'ossel', name:'Ossel', kind:'ossel', x:8, y:6, node:()=>'ttg_c1_ossel', fresh:()=>!S.f.ttg_ossel},
       {id:'mira', name:'Mira', kind:'mira', x:9, y:8, node:()=>'ttg_c1_mira', fresh:()=>!S.f.ttg_mira},
       {id:'quill', name:'Quill', kind:'quill', x:12, y:7, node:()=>'ttg_c1_quill', fresh:()=>!S.f.ttg_quill},
