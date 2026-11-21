@@ -1,0 +1,9 @@
+# Cloudflare Pages: the game page and its service worker are always re-checked, so a new version is found at once
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+/
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
