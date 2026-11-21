@@ -3,12 +3,19 @@
    a real-time carriage battle through the Ashway (032). Ids carry a ttg_ prefix. Flags live in S.f.ttg_*. */
 
 const TTG_CARGO = {
-  spice:{name:'Spice', hp:6, value:60},
-  casket:{name:'Sealed casket', hp:5, value:100},
-  silk:{name:'Silk', hp:6, value:40},
-  salt:{name:'Salt', hp:8, value:25},
+  spice:{wt:2, name:'Spice', hp:6, value:60},
+  casket:{wt:3, name:'Sealed casket', hp:5, value:100},
+  silk:{wt:1, name:'Silk', hp:6, value:40},
+  salt:{wt:3, name:'Salt', hp:8, value:25},
 };
 /* what the carriage carries out of the yard: the casket only if the captain signed for it */
+/* the team (David, Nov 21, 2026): a guild carriage is pulled by six, nine, or as many as twenty horses, by the weight it carries.
+   load: the cargo's weight (each kind's wt) plus two for each paying passenger. Six pull up to 8, nine up to 16, twenty above that.
+   The team is chosen to the load, so a fully loaded carriage keeps its pace; cargo lost on the road lightens it (989z). */
+const TTG_TEAM = [[8, 6], [16, 9], [Infinity, 20]];
+const ttgLoad = (names, passengers = 0) => names.reduce((a, k) => a + ((TTG_CARGO[k] && TTG_CARGO[k].wt) || 2), 0) + passengers * 2;
+const ttgTeam = load => TTG_TEAM.find(([cap]) => load <= cap)[1];
+const ttgTeamCap = team => (TTG_TEAM.find(t => t[1] === team) || TTG_TEAM[0])[0];
 const ttgManifest = () => S.f.ttg_casket === 'refused' ? ['spice', 'salt', 'silk'] : ['spice', 'casket', 'silk'];
 
 const TTG_CH1 = {

@@ -87,7 +87,7 @@ for i in range(14):
 CX, CY = 745, 712   # the body's bottom-left corner; the whole team is drawn here and scaled by the group below
 import subprocess
 GROUND = CY + 64
-A('<g transform="translate(870 612) scale(.8) translate(-745 -712)">')
+A('<g transform="translate(860 616) scale(.7) translate(-745 -712)">')
 A(f'<ellipse cx="{CX + 330}" cy="{GROUND}" rx="470" ry="16" fill="#000" opacity=".55" filter="url(#tblur)"/>')
 A('<defs><linearGradient id="tcoach" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2130"/><stop offset=".55" stop-color="#17121c"/><stop offset="1" stop-color="#0c0a10"/></linearGradient>'
   '<linearGradient id="ttarp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3a38"/><stop offset="1" stop-color="#1a1918"/></linearGradient></defs>')
@@ -166,21 +166,21 @@ A(f'<path d="M{CX - 4},{CY - 104} Q{CX - 30},{CY - 108} {CX - 58},{CY - 98}" str
 wheel(*RW); wheel(*FW)
 
 # ---- four horses at a full gallop: From the Ranks' own horse (beastHorse, 017b), drawn through tools/ttg_horse_svg.js ----
-HS = 13  # beastHorse units to picture units: withers about 90 up
-spec = [{'run': 1, 'col': '#100d17', 'mane': '#07060a'}, {'run': 2, 'col': '#100d17', 'mane': '#07060a'},
-        {'run': 2, 'col': INK, 'mane': '#000'}, {'run': 1, 'col': INK, 'mane': '#000'}]
+HS = 12  # beastHorse units to picture units: withers about 90 up
+# six: the fewest a guild carriage ever runs on (David, Nov 21, 2026); three pairs, the far horse of each pair a step up the road and darker
+spec = [{'run': 1 + (i % 2), 'col': '#211b2c' if i < 3 else INK, 'mane': '#07060a'} for i in range(6)]
 frag = json.loads(subprocess.check_output(['node', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ttg_horse_svg.js'), json.dumps(spec)]))
-team = [(CX + 452, GROUND - 12, frag[0]), (CX + 640, GROUND - 14, frag[1]),   # the far pair, a step up the road and darker
-        (CX + 436, GROUND, frag[2]), (CX + 626, GROUND, frag[3])]              # the near pair
+PX = [CX + 446, CX + 612, CX + 778]   # wheelers, swing pair, leaders
+team = [(PX[i] + 40, GROUND - 22, frag[i]) for i in range(3)] + [(PX[i], GROUND, frag[3 + i]) for i in range(3)]
 # the pole and the traces, behind the near horses
-A(f'<path d="M{CX + 350},{CY - 30} L{CX + 560},{GROUND - 80}" stroke="{INK}" stroke-width="5"/>')
-A(f'<path d="M{CX + 340},{CY - 46} L{CX + 400},{GROUND - 70} M{CX + 490},{GROUND - 76} L{CX + 590},{GROUND - 74}" stroke="{INK}" stroke-width="2.6"/>')
+A(f'<path d="M{CX + 350},{CY - 30} L{CX + 470},{GROUND - 74}" stroke="{INK}" stroke-width="5"/>')
+A(f'<path d="M{CX + 340},{CY - 46} L{CX + 400},{GROUND - 70} M{CX + 500},{GROUND - 76} L{CX + 560},{GROUND - 74} M{CX + 666},{GROUND - 76} L{CX + 726},{GROUND - 74}" stroke="{INK}" stroke-width="2.6"/>')
 for i, (hx, hy, svg) in enumerate(team):
     A(f'<g transform="translate({hx} {hy}) scale({HS})">{svg}</g>')
     if i >= 2:  # harness on the near horses: collar, breast strap, warren light along the back
         A(f'<g transform="translate({hx} {hy}) scale({HS})"><path d="M4.4 -8.2 Q5.6 -6.4 5.2 -4.8" stroke="#3a3240" stroke-width=".55" fill="none"/><path d="M-3.6 -8.7 Q-.4 -7.7 2.7 -8.5" stroke="#9fe0c0" stroke-opacity=".55" stroke-width=".22" fill="none"/><path d="M5 -6.4 L-2 -6.2" stroke="#3a3240" stroke-width=".3"/></g>')
 # the reins from the driver's hands to the leaders
-A(f'<path d="M{CX + 350},{CY - 98} Q{CX + 480},{GROUND - 140} {CX + 726},{GROUND - 126}" stroke="{INK}" stroke-width="1.4" fill="none"/>')
+A(f'<path d="M{CX + 350},{CY - 98} Q{CX + 520},{GROUND - 150} {CX + 878},{GROUND - 126}" stroke="{INK}" stroke-width="1.4" fill="none"/>')
 
 # dust kicked up behind the wheels and hooves
 for i in range(16):

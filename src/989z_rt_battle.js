@@ -49,7 +49,9 @@ const RT = (() => {
       known:S.f.ttg_drift === 'known'};
     for (let y = 0; y < h; y++) { const row = [], rr = []; for (let x = 0; x < w; x++) { const c = map[y][x]; row.push(c === '#' ? ROCK : GROUND); rr.push(c === '~'); } R.tiles.push(row); R.road.push(rr); }
     const names = def.cargo ? def.cargo() : ['spice', 'casket', 'silk'];
-    R.crates = names.map(k => { const c = (typeof TTG_CARGO !== 'undefined' && TTG_CARGO[k]) || {name:k, hp:6, value:30}; return {key:k, name:c.name, hp:c.hp, max:c.hp, value:c.value, hit:false}; });
+    R.crates = names.map(k => { const c = (typeof TTG_CARGO !== 'undefined' && TTG_CARGO[k]) || {name:k, hp:6, value:30}; return {key:k, name:c.name, hp:c.hp, max:c.hp, value:c.value, wt:c.wt || 2, hit:false}; });
+    { const load = R.crates.reduce((n, c) => n + c.wt, 0) + (def.passengers || 0) * 2; R.team = typeof ttgTeam === 'function' ? ttgTeam(load) : 6; R.load0 = load;
+      log(`${['', '', '', '', '', '', 'Six', '', '', 'Nine'][R.team] || 'Twenty'} horses in the traces for a load of ${load}.`); }
     const party = Object.assign({}, def.party);
     if (party.ossel === 'seat2' && !S.f.ttg_osselIn) party.ossel = [0, 7]; // he rides inside only if the captain told him to
     if (S.f.ttg_miraPlan === 'crates') party.mira = [1, 7];
@@ -191,12 +193,15 @@ const RT = (() => {
   function convert(pred, to, n, skipRoad){ let tries = 0; while (n > 0 && tries++ < 3000) { const x = Math.floor(R.rnd() * W()), y = Math.floor(R.rnd() * H()), t = tile(x, y);
     if (t === to || !pred(t) || isCar(x, y)) continue; if (skipRoad && R.road[y][x]) continue; R.tiles[y][x] = to; n--; } }
   function syncRiders(){ for (const a of R.actors) if (a.alive && a.seat >= 0) { a.x = R.carriage.x + SEATS[a.seat].x; a.y = R.carriage.y + SEATS[a.seat].y; a.nx = null; } }
+  /* the team's pace: 1 at the load it was harnessed for; each unit of cargo lost (a crate smashed) takes a little off the period */
+  function loadPace(){ if (!R.load0) return 1; const now = R.crates.reduce((n, c) => n + (c.hp > 0 ? c.wt : 0), 0) + (R.def.passengers || 0) * 2;
+    return Math.max(.85, 1 - .4 * (R.load0 - now) / (typeof ttgTeamCap === 'function' ? ttgTeamCap(R.team) : 8)); }
   function updateCarriage(dt){
     const c = R.carriage; c.anim = Math.min(1, c.anim + dt / .4);
     const drv = driverAboard(); if (!drv) c.hold = false;
     c.timer -= dt; if (c.timer > 0) return;
     const fast = drv && R.actors.some(a => a.alive && a.seat === 0 && a.driver);
-    c.timer = (drv ? PERIOD_DRIVER : PERIOD_LOOSE) * (fast && pick('tavos', 'ttg_whip') ? .67 : 1) * (c.whipT > 0 ? .65 : 1);
+    c.timer = (drv ? PERIOD_DRIVER : PERIOD_LOOSE) * (fast && pick('tavos', 'ttg_whip') ? .67 : 1) * (c.whipT > 0 ? .65 : 1) * loadPace();
     if (c.hold) return;
     let steps = 1; if (!drv && !pick('tavos', 'ttg_steady') && R.rnd() < LURCH) { steps = 2; log('No hand on the reins: the horses lurch forward.'); }
     for (let i = 0; i < steps; i++) {
@@ -433,14 +438,18 @@ const RT = (() => {
   /* the carriage, from above: black lacquer gone grey at the edges, brass trim, the guild's knot on the door, two horses ahead */
   function drawCarriage(now, s){
     const T = L.T, x0 = carX() * T, y0 = R.carriage.y * T, w = CW * T, h = CHH * T, moving = R.carriage.anim < 1;
-    // horses and traces
-    const hx = x0 + w + T * .1;
-    ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = Math.max(1, T * .04); ctx.beginPath(); ctx.moveTo(x0 + w, y0 + h * .35); ctx.lineTo(hx + T * .3, y0 + h * .3); ctx.moveTo(x0 + w, y0 + h * .65); ctx.lineTo(hx + T * .3, y0 + h * .7); ctx.stroke();
-    [.28, .72].forEach((k, i) => { const cy = y0 + h * k, bob = moving ? Math.sin(now / 90 + i * 2) * T * .03 : 0, hc = i ? '#4a3020' : '#3a2418';
-      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(hx + T * .45, cy + T * .06, T * .5, T * .2, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = hc; ctx.beginPath(); ctx.ellipse(hx + T * .4 + bob, cy, T * .42, T * .17, 0, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(hx + T * .88 + bob, cy, T * .17, T * .1, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = '#1a120c'; ctx.fillRect(hx + T * .3 + bob, cy - T * .03, T * .5, T * .06); });
+    // the team: ranks of horses ahead of the box, two abreast for six, three for nine, four for twenty (the first five ranks drawn)
+    const team = R.team || 6, abreast = team <= 6 ? 2 : team <= 9 ? 3 : 4, ranks = Math.ceil(team / abreast), hx = x0 + w + T * .1, rl = T * .78;
+    ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = Math.max(1, T * .04); ctx.beginPath();
+    for (let j = 0; j < abreast; j++) { const ty = y0 + h * (j + .5) / abreast; ctx.moveTo(x0 + w, y0 + h * .5); ctx.lineTo(hx + T * .3, ty); ctx.moveTo(hx + T * .3, ty); ctx.lineTo(hx + T * .3 + rl * (Math.min(ranks, 5) - 1), ty); }
+    ctx.stroke();
+    for (let r = 0; r < Math.min(ranks, 5); r++) for (let j = 0; j < abreast && r * abreast + j < team; j++) {
+      const i = r * abreast + j, cy = y0 + h * (j + .5) / abreast, bx = hx + r * rl, bob = moving ? Math.sin(now / 90 + i * 2) * T * .03 : 0, hc = (i % 3) === 1 ? '#4a3020' : (i % 3) === 2 ? '#2e1c12' : '#3a2418', k = abreast > 2 ? .8 : 1;
+      ctx.globalAlpha = r < 4 ? 1 : .55;
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(bx + T * .42, cy + T * .06, T * .46, T * .18 * k, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = hc; ctx.beginPath(); ctx.ellipse(bx + T * .36 + bob, cy, T * .36, T * .15 * k, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(bx + T * .76 + bob, cy, T * .15, T * .09 * k, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#1a120c'; ctx.fillRect(bx + T * .26 + bob, cy - T * .025, T * .44, T * .05); ctx.globalAlpha = 1; }
     // wheels
     ctx.fillStyle = '#17120e'; [[.12, -.06], [.12, 1.06], [.82, -.06], [.82, 1.06]].forEach(([a, b]) => { ctx.fillRect(x0 + w * a - T * .22, y0 + h * b - T * .07, T * .44, T * .14); });
     // shadow and body
@@ -532,7 +541,7 @@ const RT = (() => {
     return {id:R.id, seed:R.seed, t:R.t, drift:R.drift, nextDrift:R.nextDrift, every:R.every, anchorT:R.anchorT, braceT:R.braceT, rallyT:R.rallyT, known:R.known,
       paused:R.paused, pauseReason:R.pauseReason, result:R.result, summary:R.summary, owners:R.mp.owners, hostId:R.mp.me, used:R.used, cdT:R.cdT,
       car:{x:R.carriage.x, y:R.carriage.y, anim:R.carriage.anim, hold:R.carriage.hold}, tiles:R.tiles.map(r => r.join('')).join('/'),
-      crates:R.crates, log:R.log.slice(-6), logN:R.log.length,
+      crates:R.crates, team:R.team, log:R.log.slice(-6), logN:R.log.length,
       actors:R.actors.filter(a => a.alive || a.side === 'squad').map(a => { const o = {}; AK.forEach(k => { if (a[k] !== undefined) o[k] = a[k]; }); o.order = ORD(a.order); return o; }),
       fx:R.fx.map(f => f.kind === 'shot' ? {kind:'shot', from:f.from.id, to:f.to.id, magic:f.magic, t:f.t} : f)};
   }
@@ -548,7 +557,7 @@ const RT = (() => {
     ['t', 'drift', 'nextDrift', 'every', 'anchorT', 'braceT', 'rallyT', 'known', 'paused', 'pauseReason', 'summary', 'used', 'cdT'].forEach(k => { R[k] = s[k]; });
     if (s.result && !R.result) onEndGuest(s); R.result = s.result;
     R.mp.owners = s.owners || {}; R.mp.hostId = s.hostId;
-    R.tiles = s.tiles.split('/').map(r => [...r].map(Number)); R.crates = s.crates;
+    R.tiles = s.tiles.split('/').map(r => [...r].map(Number)); R.crates = s.crates; R.team = s.team;
     const c = R.carriage; if (c.x !== s.car.x) c.anim = Math.min(c.anim, s.car.anim); c.x = s.car.x; c.y = s.car.y; c.hold = s.car.hold; if (s.car.anim >= 1) c.anim = 1;
     const old = new Map(R.actors.map(a => [a.id, a]));
     R.actors = s.actors.map(o => { const a = old.get(o.id) || {}; Object.keys(a).forEach(k => { if (!(k in o)) delete a[k]; }); Object.assign(a, o); if (a.nx === undefined) a.nx = null; return a; });

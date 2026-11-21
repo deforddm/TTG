@@ -196,6 +196,7 @@ function glossHTML(){
 
 /* what's new: shown once after an update (to a player with a save), and again from the version number on the title */
 const NOTES = [ // Trygalle Run's own history. The From the Ranks engine's notes stay with From the Ranks.
+  ['0.6.0', ['A guild carriage never runs on fewer than six horses. The team is matched to the load: six for a light one, nine for a heavier one, twenty for the heaviest. Six on the title, six in every scene, and the whole team in the fight.', 'Each cargo has a weight. When a crate is smashed, the carriage runs a little lighter and faster.']],
   ['0.5.0', ['New horses on the title, drawn with the From the Ranks horse at a full gallop, and a new carriage: iron-bound, sprung, lamps lit and cargo lashed under a tarp.', 'Trygalle Run now keeps its own version history. The engine it was built from no longer sends its notes here.']],
   ['0.4.0', ['A new title screen: the guild carriage racing a torn warren, ash hounds behind, under the guild\'s own seal.', 'Trygalle Run has its own music: a road song in E Dorian, and a galloping title theme that drops into the warren now and then.', 'No more book covers: New run starts a run, and lists the other saves on this device.']],
   ['0.3.0', ['Play together on one wifi with no internet: Host on this wifi, Join on this wifi, and swap a QR code each.']],
