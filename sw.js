@@ -1,4 +1,4 @@
-const CACHE = 'ttg-v0.7.0'; // backups: a save file that survives a cleared browser
+const CACHE = 'ttg-v0.7.1'; // backups: a save file that survives a cleared browser
 const FONTS = 'ttg-fonts'; // Google Fonts, kept across versions so the typography survives offline play
 const PAGE = './'; // the 2.5 MB game, precached at './' (Cloudflare Pages redirects /index.html to /, and a redirected response
 // answering a navigation makes Chrome show ERR_FAILED). './' and './index.html' are answered from it.

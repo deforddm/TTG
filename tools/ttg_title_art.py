@@ -12,7 +12,7 @@ A = o.append
 A(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="The guild carriage racing toward a torn warren under a night sky">')
 A('''<defs>
 <linearGradient id="tsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05060d"/><stop offset=".45" stop-color="#121027"/><stop offset=".72" stop-color="#2a1d36"/><stop offset="1" stop-color="#3a2430"/></linearGradient>
-<radialGradient id="tglow" cx="1250" cy="250" r="520" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#c9f2d8" stop-opacity=".55"/><stop offset=".25" stop-color="#7fd0b0" stop-opacity=".25"/><stop offset=".6" stop-color="#3d6a72" stop-opacity=".08"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+<radialGradient id="tglow" cx="1430" cy="330" r="620" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#c9f2d8" stop-opacity=".55"/><stop offset=".25" stop-color="#7fd0b0" stop-opacity=".25"/><stop offset=".6" stop-color="#3d6a72" stop-opacity=".08"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
 <linearGradient id="trift" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4fff6"/><stop offset=".5" stop-color="#d9ffe4"/><stop offset="1" stop-color="#f2d9a0"/></linearGradient>
 <radialGradient id="tlamp" r=".5"><stop offset="0" stop-color="#ffe6a8" stop-opacity=".95"/><stop offset=".35" stop-color="#f0a84a" stop-opacity=".45"/><stop offset="1" stop-color="#f0a84a" stop-opacity="0"/></radialGradient>
 <linearGradient id="troad" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#2b2630"/><stop offset=".6" stop-color="#4a4450"/><stop offset="1" stop-color="#8fb8a8"/></linearGradient>
@@ -36,7 +36,7 @@ A(f'<rect width="{W}" height="{H}" fill="url(#tsky)"/>')
 # stars
 for _ in range(170):
     x, y = R.uniform(0, W), R.uniform(0, 520) ** 1.0
-    if math.hypot(x - 1250, y - 250) < 170: continue
+    if abs(x - 1430) < 190: continue
     r = R.choice([.6, .8, 1, 1, 1.3, 1.8])
     A(f'<circle cx="{x:.0f}" cy="{y * .95:.0f}" r="{r}" fill="#dfe6ff" opacity="{R.uniform(.25, .85):.2f}"/>')
 # the warren glow and the tear
@@ -51,16 +51,7 @@ def tear(cx, top, bot, wid, jag, seed):
         L.append((x - w + rr.uniform(-jag, jag) * .6, y)); Rr.append((x + w + rr.uniform(-jag, jag) * .6, y))
     pts = L + Rr[::-1]
     return 'M' + ' L'.join(f'{x:.0f},{y:.0f}' for x, y in pts) + 'Z'
-A('<g class="tt-rift">')
-A(f'<path d="{tear(1250, 30, 470, 70, 18, 3)}" fill="#9fe8c4" opacity=".35" filter="url(#tblur2)"/>')
-A(f'<path d="{tear(1250, 45, 455, 34, 14, 4)}" fill="#cff7e0" opacity=".7" filter="url(#tblur)"/>')
-A(f'<path d="{tear(1250, 58, 442, 14, 9, 5)}" fill="url(#trift)"/>')
-# light spilling from the tear: faint rays
-for i in range(9):
-    a = -math.pi / 2 + (i - 4) * .22
-    x2, y2 = 1180 + math.cos(a + math.pi) * 900, 300 - math.sin(a + math.pi) * 900
-    A(f'<path d="M1250,250 L{1250 + math.cos(a) * 1100:.0f},{300 + math.sin(a) * -1100 * -1:.0f}" stroke="#bff0d6" stroke-width="{R.uniform(10, 40):.0f}" opacity=".035" />')
-A('</g>')
+# (the tear itself is drawn standing on the road, after the ground: see 'the tear in the warren' below)
 # hills: three layers
 def ridge(y0, amp, seed, col, op=1):
     rr = random.Random(seed); pts = []; x = -20
@@ -75,9 +66,57 @@ A('<path d="M240,470 L252,380 L262,386 L270,362 L282,470Z" fill="#141226"/>')
 ridge(570, 36, 13, '#100e1c')
 # ground
 A(f'<rect x="0" y="570" width="{W}" height="{H - 570}" fill="url(#tground)"/>')
-# the road: from the bottom left, sweeping right toward the tear's foot
-A('<path d="M-40,900 C300,800 620,700 880,650 C1100,612 1260,580 1300,520 L1336,522 C1260,620 1060,666 860,712 C600,770 330,860 120,920Z" fill="url(#troad)" opacity=".75"/>')
-A('<path d="M60,905 C360,806 690,712 950,664 C1150,630 1280,590 1318,522" stroke="#a9c9b9" stroke-opacity=".18" stroke-width="3" fill="none" stroke-dasharray="18 22"/>')
+# ---- the tear in the warren (David, Nov 21: "create an obvious tear in the warren they are trying to reach") ----
+# a great ragged gash standing on the road ahead, sky to ground: torn dark edges curling back, another world's light inside,
+# shards of the torn night drifting off it, and its light spilled down the road toward the carriage
+TX, TTOP, TBOT = 1365, 30, 600
+def gash(wid, jag, seed, top=TTOP, bot=TBOT, lean=-190):
+    rr = random.Random(seed); L, Rr = [], []
+    n = 22
+    for i in range(n + 1):
+        t = i / n; y = top + (bot - top) * t
+        w = wid * math.sin(math.pi * (.02 + .96 * t)) ** 1.05 * (1 + .25 * math.sin(t * 9))
+        x = TX + (t - .5) * lean
+        L.append((x - w + rr.uniform(-jag, jag), y)); Rr.append((x + w + rr.uniform(-jag, jag), y))
+    return 'M' + ' L'.join(f'{x:.0f},{y:.0f}' for x, y in L + Rr[::-1]) + 'Z'
+A('<defs><linearGradient id="twin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8fff2"/><stop offset=".45" stop-color="#bfeed4"/><stop offset=".8" stop-color="#f0dca0"/><stop offset="1" stop-color="#ffd890"/></linearGradient>'
+  f'<clipPath id="tinside"><path d="{gash(96, 12, 21)}"/></clipPath></defs>')
+A('<g class="tt-rift">')
+A(f'<path d="{gash(230, 30, 20)}" fill="#9fe8c4" opacity=".28" filter="url(#tblur2)"/>')
+A(f'<path d="{gash(128, 26, 22)}" fill="#0b0912"/>')   # the torn edge of the night, dark and ragged
+A(f'<path d="{gash(96, 12, 21)}" fill="url(#twin)"/>')  # the warren beyond
+# what lies inside: another sky, a pale sun, a long flat land of ochre and ash
+A('<g clip-path="url(#tinside)">')
+A(f'<circle cx="{TX + 10}" cy="250" r="46" fill="#fffbe8" opacity=".9"/><circle cx="{TX + 10}" cy="250" r="90" fill="#fff6d0" opacity=".35" filter="url(#tblur)"/>')
+A(f'<path d="M{TX - 160},470 L{TX - 90},452 L{TX - 40},462 L{TX + 20},440 L{TX + 80},458 L{TX + 160},446 L{TX + 160},620 L{TX - 160},620Z" fill="#b89a5a" opacity=".75"/>')
+A(f'<path d="M{TX - 160},520 L{TX + 160},500 L{TX + 160},620 L{TX - 160},620Z" fill="#8a6c3a" opacity=".7"/>')
+A(f'<path d="M{TX - 20},620 L{TX + 6},470 L{TX + 16},470 L{TX + 60},620Z" fill="#d8c890" opacity=".55"/>')  # the road, going on inside
+A('</g>')
+A(f'<path d="{gash(96, 12, 21)}" fill="none" stroke="#f4fff8" stroke-width="5" opacity=".9" filter="url(#tsoft)"/>')
+# flaps of the torn night curling back from the edges
+rr = random.Random(31)
+for i in range(9):
+    t = .1 + .8 * i / 8; y = TTOP + (TBOT - TTOP) * t; sd = -1 if i % 2 else 1
+    w = 96 * math.sin(math.pi * (.02 + .96 * t)) ** 1.05; x = TX + (t - .5) * -190 + sd * (w + 8)
+    L = rr.uniform(26, 54)
+    A(f'<path d="M{x:.0f},{y - 14:.0f} Q{x + sd * L * .9:.0f},{y - 22:.0f} {x + sd * L:.0f},{y + 6:.0f} Q{x + sd * L * .4:.0f},{y + 4:.0f} {x:.0f},{y + 16:.0f}Z" fill="#0b0912"/>')
+    A(f'<path d="M{x:.0f},{y - 14:.0f} Q{x + sd * L * .9:.0f},{y - 22:.0f} {x + sd * L:.0f},{y + 6:.0f}" stroke="#bff0d6" stroke-width="1.6" fill="none" opacity=".55"/>')
+# shards torn off it, drifting
+for i in range(16):
+    x, y = TX + rr.uniform(-260, 260), rr.uniform(60, 520)
+    if abs(x - TX) < 150: x += 150 * (1 if x > TX else -1)
+    sz = rr.uniform(6, 18); a = rr.uniform(0, 6.3)
+    pts = ' '.join(f'{x + math.cos(a + k * 2.2) * sz * (1 if k else 1.6):.0f},{y + math.sin(a + k * 2.2) * sz * (1 if k else 1.6):.0f}' for k in range(3))
+    A(f'<polygon points="{pts}" fill="#0b0912" stroke="#bff0d6" stroke-opacity=".5" stroke-width="1.2"/>')
+# light spilling out: rays across the sky, and a pool of it down the road
+for i in range(11):
+    ang = math.pi + (i - 5) * .2
+    A(f'<path d="M{TX},330 L{TX + math.cos(ang) * 1300:.0f},{330 + math.sin(ang) * 1300 * .55:.0f}" stroke="#bff0d6" stroke-width="{R.uniform(14, 44):.0f}" opacity=".022"/>')
+A('</g>')
+A(f'<ellipse cx="{TX - 120}" cy="{TBOT - 6}" rx="300" ry="30" fill="#d9ffe4" opacity=".22" filter="url(#tblur2)"/>')
+# the road: from the bottom left, sweeping up and right into the distance, the carriage running straight along it (David, Nov 21: line the carriage up with the road)
+A('<path d="M-40,900 C300,800 600,712 860,664 L1700,534 L1700,566 L860,724 C600,775 330,860 120,920Z" fill="url(#troad)" opacity=".75"/>')
+A('<path d="M60,905 C360,806 640,724 860,694 L1700,550" stroke="#a9c9b9" stroke-opacity=".18" stroke-width="3" fill="none" stroke-dasharray="18 22"/>')
 # ash on the road behind (the warren turns ground to ash): pale drifting smears
 for i in range(14):
     x, y = R.uniform(300, 900), R.uniform(680, 880)
@@ -87,7 +126,7 @@ for i in range(14):
 CX, CY = 745, 712   # the body's bottom-left corner; the whole team is drawn here and scaled by the group below
 import subprocess
 GROUND = CY + 64
-A('<g transform="translate(860 616) scale(.7) translate(-745 -712)">')
+A('<g transform="translate(860 650) rotate(-9.4 0 45) scale(.7) translate(-745 -712)">')
 A(f'<ellipse cx="{CX + 330}" cy="{GROUND}" rx="470" ry="16" fill="#000" opacity=".55" filter="url(#tblur)"/>')
 A('<defs><linearGradient id="tcoach" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2130"/><stop offset=".55" stop-color="#17121c"/><stop offset="1" stop-color="#0c0a10"/></linearGradient>'
   '<linearGradient id="ttarp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3a38"/><stop offset="1" stop-color="#1a1918"/></linearGradient></defs>')
@@ -192,9 +231,9 @@ A('</g>')
 def hound(x, y, s):
     A(f'<path d="M{x - 50 * s},{y} Q{x - 40 * s},{y - 28 * s} {x},{y - 26 * s} Q{x + 30 * s},{y - 30 * s} {x + 46 * s},{y - 40 * s} L{x + 70 * s},{y - 34 * s} L{x + 66 * s},{y - 24 * s} L{x + 46 * s},{y - 20 * s} Q{x + 30 * s},{y - 4 * s} {x + 34 * s},{y + 16 * s} L{x + 26 * s},{y + 18 * s} L{x + 14 * s},{y - 2 * s} L{x - 20 * s},{y - 2 * s} L{x - 44 * s},{y + 16 * s} L{x - 54 * s},{y + 14 * s} L{x - 44 * s},{y - 4 * s} Q{x - 66 * s},{y - 10 * s} {x - 80 * s},{y - 22 * s} Q{x - 60 * s},{y - 8 * s} {x - 50 * s},{y}Z" fill="#0a090e"/>')
     A(f'<circle cx="{x + 58 * s:.0f}" cy="{y - 33 * s:.0f}" r="{2.6 * s:.1f}" fill="#ff7a3a"/><circle cx="{x + 58 * s:.0f}" cy="{y - 33 * s:.0f}" r="{8 * s:.1f}" fill="#ff7a3a" opacity=".3" filter="url(#tblur)"/>')
-hound(845, 668, .62)
-hound(770, 690, .55)
-hound(700, 712, .5)
+hound(800, 714, .62)
+hound(725, 736, .55)
+hound(655, 758, .5)
 
 # embers drifting up from the road
 emb = []
