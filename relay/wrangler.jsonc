@@ -1,0 +1,9 @@
+// The Trygalle Run relay: one Durable Object per room code. Players' browsers connect to wss://<this worker>/room/CODE
+// and every message one sends reaches the others. The game itself runs in the browsers; the host's browser runs the fight.
+{
+  "name": "ttg-relay",
+  "main": "src/index.js",
+  "compatibility_date": "2025-10-01",
+  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "Room" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+}

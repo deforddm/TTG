@@ -270,7 +270,9 @@ const RT = (() => {
   function finish(){
     if (!R || !R.result) return;
     const def = R.def;
-    if (R.result === 'lose') { tallyT('retries'); S = migrate(JSON.parse(R.snap)); return begin2(R.id, def, {}); }
+    if (R.mp && !R.mp.host) { MP.st.dismissed = R.seed; R = null; stopLoop(); MP.showLobby(); return; } // a guest: the host carries the story on
+    if (R.result === 'lose') { tallyT('retries'); const mp = R.mp; S = migrate(JSON.parse(R.snap)); return begin2(R.id, def, {mp}); }
+    if (R.mp) MP.send({t:'over'});
     const lost = (R.left || []).filter(a => a.key !== 'sgt');
     S.f.ttg_cratesLeft = cratesLeft(); S.f.ttg_casketSafe = R.crates.some(c => c.key === 'casket' && c.hp > 0) ? 1 : 0;
     S.f.ttg_cargoValue = cargoValue(); S.f.ttg_lost = lost.length ? listOf(lost.map(a => a.name)) : '';
@@ -291,6 +293,10 @@ const RT = (() => {
   let cv = null, ctx = null, bg = null, raf = 0, last = 0, acc = 0, hudKey = '', logKey = '';
   function begin2(id, def, opt){
     begin(id, def, opt);
+    if (opt.mp) { R.mp = Object.assign({}, opt.mp, {host:true}); R.selected = crew().find(mine) || null; log('Every shareholder answers to one of you. Pause stops the run for everyone.'); }
+    screen(def);
+  }
+  function screen(def){
     view = 'rtbattle'; B = null; document.body.classList.add('rt'); try { AUDIO.setScene(def.music || 'battle'); } catch (e) {}
     $('#sheet').hidden = true; toTop();
     const known = R.known;
@@ -303,10 +309,11 @@ const RT = (() => {
       <div class="hint rthelp">Tap a shareholder, then tap ground to move, an enemy to attack, or the carriage to climb aboard. Riders tap a tile beside the carriage to jump down. Space pauses, 1 to 5 select, Q uses a skill.</div>`;
     bindHud();
     cv = $('#rtcv'); ctx = cv.getContext('2d');
-    $('#rtPause').onclick = () => { click(); setPaused(!R.paused); };
-    $('#rtSkill').onclick = () => { click(); if (R.selected) useSkill(R.selected); };
-    $('#rtBoard').onclick = () => { click(); const s = sel(); if (!s) return; if (s.seat >= 0) orderJump(s, s.x, s.y - 1); else orderBoard(s); };
-    $('#rtHold').onclick = () => { click(); if (!driverAboard()) return; R.carriage.hold = !R.carriage.hold; log(R.carriage.hold ? 'The driver hauls on the reins. The carriage holds.' : 'The driver lets the horses run.'); };
+    $('#rtPause').onclick = () => { click(); act({c:'pause', p:!R.paused}); };
+    $('#rtSkill').onclick = () => { click(); const s = sel(); if (s) act({c:'skill', a:s.id}); };
+    $('#rtBoard').onclick = () => { click(); const s = sel(); if (!s) return; if (s.seat >= 0) act({c:'jump', a:s.id, x:s.x, y:s.y - 1}); else act({c:'board', a:s.id}); };
+    $('#rtHold').onclick = () => { click(); act({c:'hold'}); };
+    if (R.mp && !R.mp.host) { $('#rtAuto').hidden = $('#rtSpeed').hidden = true; }
     $('#rtAuto').onclick = () => { click(); prefs.auto = !prefs.auto; savePrefs(); };
     $('#rtSpeed').onclick = () => { click(); prefs.speed = prefs.speed === 1 ? 2 : 1; savePrefs(); };
     $('#rtGo').onclick = () => { click(); finish(); };
@@ -315,7 +322,25 @@ const RT = (() => {
     layout(); if (!raf) { last = performance.now(); acc = 0; raf = requestAnimationFrame(frame); }
   }
   const click = () => { try { AUDIO.play('click'); } catch (e) {} };
-  const sel = () => R && R.selected && R.selected.alive ? R.selected : null;
+  const sel = () => R && R.selected && R.selected.alive && mine(R.selected) ? R.selected : null;
+  /* together: who holds which shareholder (owners: key -> player id); alone, every one is yours */
+  const mine = a => !R || !R.mp || a.side !== 'squad' || (R.mp.owners[a.key] || R.mp.hostId) === R.mp.me;
+  const ownerOf = a => R.mp ? (R.mp.owners[a.key] || R.mp.hostId) : null;
+  /* every order goes through here: alone or hosting it is applied at once, as a guest it goes to the host */
+  function act(c){ if (!R || R.result) return; if (R.mp && !R.mp.host) { MP.send({t:'cmd', c, to:R.mp.hostId}); return; } applyCmd(R.mp ? R.mp.me : null, c); }
+  function applyCmd(from, c){
+    if (!R || R.result || !c) return;
+    const byId = id => R.actors.find(a => a.id === id), a = c.a != null ? byId(c.a) : null;
+    if (a && (a.side !== 'squad' || !a.alive)) return;
+    if (a && R.mp && from && ownerOf(a) !== from) return; // only the player who holds a shareholder gives them orders
+    if (c.c === 'move' && a && inB(c.x, c.y)) { if (a.seat >= 0) orderJump(a, c.x, c.y); else orderMove(a, c.x, c.y); }
+    else if (c.c === 'jump' && a) orderJump(a, c.x, c.y);
+    else if (c.c === 'board' && a) orderBoard(a);
+    else if (c.c === 'attack' && a) { const t = byId(c.t); if (t && t.alive && t.side === 'enemy') orderAttack(a, t); }
+    else if (c.c === 'skill' && a) useSkill(a);
+    else if (c.c === 'hold') { if (!driverAboard()) return; R.carriage.hold = !R.carriage.hold; log(R.carriage.hold ? 'The driver hauls on the reins. The carriage holds.' : 'The driver lets the horses run.'); }
+    else if (c.c === 'pause') { setPaused(!!c.p); if (c.p && R.mp && from && from !== R.mp.me) R.pauseReason = `${MP.nameOf(from)} paused the run.`; }
+  }
   function setPaused(p){ if (R.result) return; R.paused = p; if (p) R.pauseReason = 'Give orders, then press Resume.'; }
   function stopLoop(){ if (raf) cancelAnimationFrame(raf); raf = 0; document.body.classList.remove('rt'); }
 
@@ -438,8 +463,8 @@ const RT = (() => {
 
   /* ---------------- the HUD ---------------- */
   function buildRoster(){
-    $('#rtRoster').innerHTML = crew().map((a, i) => `<button class="rtcard" data-i="${i}"><span class="top"><span class="nm">${i + 1}. ${esc(a.name)}</span><span class="rl">${esc(a.role)}</span></span><span class="grit"><i></i></span><span class="st"></span></button>`).join('');
-    $('#rtRoster').onclick = e => { const b = e.target.closest('[data-i]'); if (!b || !R) return; const a = crew()[+b.dataset.i]; if (a && a.alive) { if (R.selected === a && a.skill) useSkill(a); R.selected = a; click(); } };
+    $('#rtRoster').innerHTML = crew().map((a, i) => `<button class="rtcard${R.mp && !mine(a) ? ' other' : ''}" data-i="${i}"><span class="top"><span class="nm">${i + 1}. ${esc(a.name)}</span><span class="rl">${esc(R.mp ? (mine(a) ? 'yours' : MP.nameOf(ownerOf(a))) : a.role)}</span></span><span class="grit"><i></i></span><span class="st"></span></button>`).join('');
+    $('#rtRoster').onclick = e => { const b = e.target.closest('[data-i]'); if (!b || !R) return; const a = crew()[+b.dataset.i]; if (a && a.alive && mine(a)) { if (R.selected === a && a.skill) act({c:'skill', a:a.id}); R.selected = a; click(); } };
   }
   function status(a){ if (a.carried) return 'Down, on the carriage'; if (a.down) return 'Down'; if (!a.alive) return 'Gone'; const o = a.order;
     if (o && o.type === 'attack') return 'Attacking ' + o.target.name; if (o && o.type === 'board') return 'To the carriage'; if (o && (o.type === 'move' || o.type === 'jump')) return 'Moving';
@@ -461,7 +486,7 @@ const RT = (() => {
       $('#rtSpeed').textContent = prefs.speed + '×';
       crew().forEach((a, i) => { const b = $(`#rtRoster [data-i="${i}"]`); if (!b) return; b.classList.toggle('sel', a === R.selected && a.alive); b.classList.toggle('down', !a.alive);
         b.querySelector('.grit i').style.width = (100 * Math.max(0, a.grit) / a.maxGrit) + '%'; b.querySelector('.st').innerHTML = esc(status(a)) + (a.wounds && a.alive ? ` <span class="w">· ${a.wounds} wound${a.wounds > 1 ? 's' : ''}</span>` : ''); });
-      const ov = $('#rtOver'); if (R.result) { ov.hidden = false; $('#rtOt').textContent = R.result === 'win' ? 'Through the gate' : 'The run fails'; $('#rtOt').className = 'rtot ' + R.result; $('#rtOx').textContent = R.summary; $('#rtGo').textContent = R.result === 'win' ? 'Out into the rain' : 'Run the Ashway again'; } else ov.hidden = true;
+      const ov = $('#rtOver'); if (R.result) { ov.hidden = false; $('#rtOt').textContent = R.result === 'win' ? 'Through the gate' : 'The run fails'; $('#rtOt').className = 'rtot ' + R.result; $('#rtOx').textContent = R.summary; $('#rtGo').textContent = R.mp && !R.mp.host ? 'Back to the crew' : R.result === 'win' ? 'Out into the rain' : 'Run the Ashway again'; } else ov.hidden = true;
     }
     const lk = R.log.length + ':' + R.log[R.log.length - 1]; if (lk !== logKey) { logKey = lk; $('#rtLog').innerHTML = R.log.slice(window.innerWidth <= 520 ? -2 : -3).map(l => `<div>${esc(l)}</div>`).join(''); }
   }
@@ -471,18 +496,18 @@ const RT = (() => {
   function tap(ev){
     if (!R || R.result) return; const r = cv.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top;
     const hit = actorAt(px, py), s = sel();
-    if (hit && hit.side === 'squad') { if (s === hit && hit.seat < 0 && !hit.order && hit.skill) {} R.selected = hit; click(); return; }
+    if (hit && hit.side === 'squad' && mine(hit)) { R.selected = hit; click(); return; }
     if (!s) return;
-    if (hit && hit.side === 'enemy') { orderAttack(s, hit); click(); return; }
+    if (hit && hit.side === 'enemy') { act({c:'attack', a:s.id, t:hit.id}); click(); return; }
     const [x, y] = cellAt(px, py); if (!inB(x, y)) return;
-    if (isCar(x, y)) { if (s.seat < 0) orderBoard(s); click(); return; }
+    if (isCar(x, y)) { if (s.seat < 0) act({c:'board', a:s.id}); click(); return; }
     if (tile(x, y) === ROCK) return;
-    if (s.seat >= 0) orderJump(s, x, y); else orderMove(s, x, y); click();
+    act({c:s.seat >= 0 ? 'jump' : 'move', a:s.id, x, y}); click();
   }
   window.addEventListener('keydown', e => {
     if (view !== 'rtbattle' || !R) return; if (!$('#sheet').hidden || ($('#settings') && !$('#settings').hidden) || ($('#chars') && !$('#chars').hidden)) return;
-    if (e.code === 'Space') { e.preventDefault(); if (R.result) finish(); else setPaused(!R.paused); }
-    else if (/^Digit[1-5]$/.test(e.code)) { const a = crew()[+e.code.slice(5) - 1]; if (a && a.alive) R.selected = a; }
+    if (e.code === 'Space') { e.preventDefault(); if (R.result) finish(); else act({c:'pause', p:!R.paused}); }
+    else if (/^Digit[1-5]$/.test(e.code)) { const a = crew()[+e.code.slice(5) - 1]; if (a && a.alive && mine(a)) R.selected = a; }
     else if (e.code === 'KeyB') $('#rtBoard').click(); else if (e.code === 'KeyH') $('#rtHold').click(); else if (e.code === 'KeyQ') $('#rtSkill').click();
     else return;
     e.stopImmediatePropagation();
@@ -493,12 +518,56 @@ const RT = (() => {
     raf = 0;
     if (view !== 'rtbattle' || !R || !cv || !cv.isConnected) { stopLoop(); return; }
     const dt = Math.min(.1, (now - last) / 1000); last = now;
-    if (!R.paused && !R.result) { acc += dt * prefs.speed; while (acc >= STEP) { update(STEP); acc -= STEP; } }
+    if (R.mp && !R.mp.host) guestTick(dt);
+    else { if (!R.paused && !R.result) { acc += dt * prefs.speed; while (acc >= STEP) { update(STEP); acc -= STEP; } }
+      if (R.mp && (now - (R.mp.sent || 0) > 100 || R.result && !R.mp.sentEnd)) { R.mp.sent = now; if (R.result) R.mp.sentEnd = 1; MP.send({t:'snap', s:snapshot()}); } }
     layout(); draw(now); hud();
     raf = requestAnimationFrame(frame);
   }
 
-  return {start:begin2, update, finish, useSkill, skillState, orderMove, orderAttack, orderBoard, orderJump, freeSeat, toCar, enemies, squad, crew, inRange, setPaused, prefs,
+  /* ---------------- together: the host's fight, sent ten times a second; a guest draws what it is sent ---------------- */
+  const ORD = o => !o ? null : o.type === 'attack' ? {type:'attack', t:o.target.id} : Object.assign({}, o);
+  const AK = ['id', 'side', 'key', 'name', 'fig', 'role', 'x', 'y', 'nx', 'ny', 'stepT', 'stepDur', 'grit', 'maxGrit', 'wounds', 'alive', 'down', 'carried', 'seat', 'face', 'flash', 'swing', 'skill', 'driver', 'roof', 'magic', 'range', 'arrived', 'cargo'];
+  function snapshot(){
+    return {id:R.id, seed:R.seed, t:R.t, drift:R.drift, nextDrift:R.nextDrift, every:R.every, anchorT:R.anchorT, braceT:R.braceT, rallyT:R.rallyT, known:R.known,
+      paused:R.paused, pauseReason:R.pauseReason, result:R.result, summary:R.summary, owners:R.mp.owners, hostId:R.mp.me, used:R.used, cdT:R.cdT,
+      car:{x:R.carriage.x, y:R.carriage.y, anim:R.carriage.anim, hold:R.carriage.hold}, tiles:R.tiles.map(r => r.join('')).join('/'),
+      crates:R.crates, log:R.log.slice(-6), logN:R.log.length,
+      actors:R.actors.filter(a => a.alive || a.side === 'squad').map(a => { const o = {}; AK.forEach(k => { if (a[k] !== undefined) o[k] = a[k]; }); o.order = ORD(a.order); return o; }),
+      fx:R.fx.map(f => f.kind === 'shot' ? {kind:'shot', from:f.from.id, to:f.to.id, magic:f.magic, t:f.t} : f)};
+  }
+  /* a guest: build the board from the battle def, then take everything else from the host */
+  function guestStart(s, mp){
+    const def = (typeof battleDef === 'function' ? battleDef(s.id) : BATTLES[s.id]); if (!def) return;
+    const map = def.map;
+    R = {id:s.id, def, seed:s.seed, w:map[0].length, h:map.length, road:map.map(r => [...r].map(c => c === '~')), actors:[], fx:[], log:[], crates:[], carriage:{x:0, y:0, anim:1}, mp:Object.assign({}, mp, {host:false}), selected:null};
+    guestSnap(s); R.selected = crew().find(mine) || null; screen(def);
+  }
+  function guestSnap(s){
+    if (!R || R.seed !== s.seed || R.id !== s.id) return guestStart(s, R ? R.mp : MP.mpInfo());
+    ['t', 'drift', 'nextDrift', 'every', 'anchorT', 'braceT', 'rallyT', 'known', 'paused', 'pauseReason', 'summary', 'used', 'cdT'].forEach(k => { R[k] = s[k]; });
+    if (s.result && !R.result) onEndGuest(s); R.result = s.result;
+    R.mp.owners = s.owners || {}; R.mp.hostId = s.hostId;
+    R.tiles = s.tiles.split('/').map(r => [...r].map(Number)); R.crates = s.crates;
+    const c = R.carriage; if (c.x !== s.car.x) c.anim = Math.min(c.anim, s.car.anim); c.x = s.car.x; c.y = s.car.y; c.hold = s.car.hold; if (s.car.anim >= 1) c.anim = 1;
+    const old = new Map(R.actors.map(a => [a.id, a]));
+    R.actors = s.actors.map(o => { const a = old.get(o.id) || {}; Object.keys(a).forEach(k => { if (!(k in o)) delete a[k]; }); Object.assign(a, o); if (a.nx === undefined) a.nx = null; return a; });
+    const byId = new Map(R.actors.map(a => [a.id, a]));
+    R.actors.forEach(a => { if (a.order && a.order.type === 'attack') { const t = byId.get(a.order.t); a.order = t ? {type:'attack', target:t} : null; } });
+    R.fx = s.fx.map(f => f.kind === 'shot' ? (byId.get(f.from) && byId.get(f.to) ? {kind:'shot', from:byId.get(f.from), to:byId.get(f.to), magic:f.magic, t:f.t} : null) : f).filter(Boolean);
+    if (s.logN !== R.logN) { R.log = s.log; R.logN = s.logN; }
+    if (R.selected && !byId.has(R.selected.id)) R.selected = null;
+    if (!sel()) R.selected = crew().find(a => a.alive && mine(a)) || null;
+    if (R.rosterKey !== JSON.stringify(s.owners)) { R.rosterKey = JSON.stringify(s.owners); if (cv && cv.isConnected) buildRoster(); }
+  }
+  function onEndGuest(s){ try { AUDIO.play(s.result === 'win' ? 'win' : 'lose'); } catch (e) {} }
+  function guestTick(dt){ // between the host's messages: steps keep walking, the carriage keeps rolling, effects keep fading
+    for (const a of R.actors) if (a.nx !== null && a.nx !== undefined && !R.paused) a.stepT = Math.min(.98, a.stepT + dt / (a.stepDur || 1));
+    if (!R.paused) R.carriage.anim = Math.min(1, R.carriage.anim + dt / .4);
+    for (const f of R.fx) f.t += dt; R.fx = R.fx.filter(f => f.t < (f.kind === 'shot' ? .2 : .9));
+  }
+
+  return {start:begin2, guestStart, guestSnap, applyCmd, snapshot, mine, update, finish, useSkill, skillState, orderMove, orderAttack, orderBoard, orderJump, freeSeat, toCar, enemies, squad, crew, inRange, setPaused, prefs,
     get R(){ return R; }};
 })();
 window.__rt = RT;

@@ -717,6 +717,27 @@ body.rt #app{max-width:1100px}
 @media (max-width:520px){.rtorders{gap:5px;flex-wrap:nowrap}.rtorders .sp{display:none}.rtorders .btn{flex:1 1 auto;min-width:0;padding:8px 6px;font-size:.85rem}
   .rtroster{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.rtcard{min-height:0;padding:5px 5px 6px}.rtcard .nm{font-size:.8rem}.rtcard .rl,.rtcard .st{display:none}.rthelp{display:none}
   .rtlog{font-size:.75rem;left:6px;right:6px;bottom:4px}.rtbanner{font-size:.85rem;padding:4px 10px;top:4px}}
+/* ---- Trygalle Run: playing together (044) ---- */
+.lobby{gap:14px;padding:18px}
+.lobby .txt{font-family:var(--prose);line-height:1.5;margin:0}
+.lobby .field{display:flex;flex-direction:column;gap:6px}
+.lobby label{font-family:var(--label);letter-spacing:.06em;color:var(--mute)}
+.lobby input,.lobby select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line2);padding:9px 10px;min-height:42px;box-sizing:border-box;border-radius:2px}
+.lobby input{min-width:0;flex:1}
+#lbCode{text-transform:uppercase;letter-spacing:.3em;font-family:var(--label);font-weight:700;max-width:9em}
+.lbrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.lbcode{display:flex;align-items:baseline;gap:14px}
+.lbcode span{font-family:var(--label);color:var(--mute);letter-spacing:.08em;text-transform:uppercase;font-size:.8rem}
+.lbcode b{font-family:var(--display);font-size:2.6rem;letter-spacing:.18em;color:var(--brass2)}
+.lobby .rh{font-family:var(--label);letter-spacing:.08em;text-transform:uppercase;font-size:.8rem;color:var(--brass)}
+.lbplayers{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.lbplayers li{border:1px solid var(--line2);background:var(--panel);padding:5px 10px;font-family:var(--label)}
+.lbplayers small{color:var(--mute);margin-left:4px}
+.lbcrew{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:8px 12px;align-items:center}
+.lbcrew small{color:var(--mute)}
+.lbcrew .own{font-family:var(--label)}
+.lbmsg{min-height:1.2em;color:var(--brass2)}
+.rtcard.other{opacity:.7;cursor:default}
 </style>
 <style>[hidden]{display:none!important}body{margin:0}</style>
 </head><body>
@@ -733,7 +754,7 @@ body.rt #app{max-width:1100px}
 <div class="flash" id="flash"></div>
 <div class="red" id="red"></div>
 <script>
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 
 /* ============ utilities ============ */
 const $ = s => document.querySelector(s);
@@ -11950,6 +11971,123 @@ SCENEX.ttg_kan = (cv, t) => { const {ctx, W, H} = sceneFit(cv); ttgNight(ctx, W,
   const sq = SQUAD().filter(id => id !== 'tavos'); sq.forEach((id, i) => drawFigure(ctx, id, W * .12 + i * 34, H * .96 - (i % 2) * 3, 1.7, t, {dir:1, phase:i}));
   ctx.strokeStyle = 'rgba(190,200,215,.35)'; ctx.lineWidth = 1; for (let i = 0; i < 90; i++) { const x = (hash(i, 1) * W + t * .12) % W, y = (hash(i, 2) * H + t * .5) % H; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 2, y + 9); ctx.stroke(); } };
 
+/* ============ Trygalle Run: playing together ============
+   Co-op over a room code. Every player's browser connects to the guild's relay (relay/ in the repo, a Cloudflare Worker) at
+   /room/CODE; the relay passes messages between the players in that room and keeps nothing itself. The host's browser runs
+   the fight (989z) and sends what it looks like ten times a second; the others draw that and send their orders back.
+   Each shareholder answers to one player. Same wifi or across the world, it is the same: everyone types the same code.
+   Messages: host -> all {t:'lobby'} {t:'snap'} {t:'over'}; guest -> host {t:'cmd'}; the relay adds {t:'hello'|'join'|'leave'}. */
+const MP = (() => {
+  const CREW = ['sgt', 'tavos', 'mira', 'quill', 'ossel'];
+  const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const st = {ws:null, me:null, hostId:null, host:false, code:'', name:'', players:[], owners:{}, status:'', dismissed:null, open:false};
+  const relayURL = () => {
+    try { const q = new URLSearchParams(location.search).get('relay'); if (q) localStorage.setItem('ttg-relay', q); } catch (e) {}
+    let r = ''; try { r = localStorage.getItem('ttg-relay') || ''; } catch (e) {}
+    if (r) return r.replace(/\/$/, '');
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return 'ws://localhost:8787';
+    return 'wss://relay.playfromtheranks.com';
+  };
+  const savedName = () => { try { return localStorage.getItem('ttg-name') || ''; } catch (e) { return ''; } };
+  const keepName = n => { try { localStorage.setItem('ttg-name', n); } catch (e) {} };
+  const nameOf = id => (st.players.find(p => p.id === id) || {}).name || 'a shareholder';
+  const send = m => { if (st.ws && st.ws.readyState === 1) try { st.ws.send(JSON.stringify(m)); } catch (e) {} };
+  const mpInfo = () => ({me:st.me, hostId:st.hostId, owners:st.owners});
+  const inRun = () => view === 'rtbattle' && RT.R && RT.R.mp;
+
+  function connect(code, name, host){
+    leave(true);
+    st.code = code; st.name = name; st.host = host; st.players = []; st.owners = {}; st.hostId = null; st.status = 'Reaching the guild\'s relay…'; st.open = false; keepName(name);
+    let ws; try { ws = new WebSocket(`${relayURL()}/room/${code}?name=${encodeURIComponent(name)}`); } catch (e) { st.status = 'This browser could not open a connection.'; return render(); }
+    st.ws = ws; render();
+    const timer = setTimeout(() => { if (!st.open && st.ws === ws) { st.status = 'The guild\'s relay did not answer. Check the connection and try again.'; try { ws.close(); } catch (e) {} render(); } }, 8000);
+    ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } if (st.ws === ws) onMsg(m); };
+    ws.onclose = () => { clearTimeout(timer); if (st.ws !== ws) return; st.ws = null;
+      if (st.open) { st.status = 'The connection to the room was lost.'; st.open = false; if (inRun() && !RT.R.mp.host) { RT.R.paused = true; RT.R.pauseReason = 'Lost the connection to the host.'; } }
+      render(); };
+    ws.onerror = () => { if (!st.open) st.status = 'Could not reach the guild\'s relay. Check the connection and try again.'; };
+  }
+  function leave(quiet){ const ws = st.ws; st.ws = null; st.open = false; if (ws) try { ws.close(); } catch (e) {} if (!quiet) { st.code = ''; st.players = []; st.status = ''; } }
+
+  function onMsg(m){
+    if (m.t === 'hello') { st.open = true; st.me = m.you; st.players = [{id:m.you, name:st.name}, ...m.peers];
+      if (st.host) { if (m.peers.length) { st.status = 'Someone is already using that code. Host again for a fresh one.'; leave(true); return render(); }
+        st.hostId = st.me; CREW.forEach(k => { st.owners[k] = st.me; }); st.status = ''; lobbyOut(); }
+      else st.status = m.peers.length ? 'Waiting for the host…' : 'Nobody is in that room yet. Check the code with whoever is hosting.';
+      return render(); }
+    if (m.t === 'join') { st.players = st.players.filter(p => p.id !== m.id).concat([{id:m.id, name:m.name}]); if (st.host) { lobbyOut(); if (!inRun()) share(); } return render(); }
+    if (m.t === 'leave') { m.name = nameOf(m.id); st.players = st.players.filter(p => p.id !== m.id);
+      if (st.host) { CREW.forEach(k => { if (st.owners[k] === m.id) st.owners[k] = st.me; }); lobbyOut(); if (inRun()) { RT.R.paused = true; RT.R.pauseReason = `${(m.name || 'A player')} left. Their shareholders are yours now.`; } }
+      else if (m.id === st.hostId) { st.status = 'The host has left the room.'; st.hostId = null; if (inRun()) { RT.R.paused = true; RT.R.pauseReason = 'The host has left. The run ends here.'; } }
+      return render(); }
+    if (st.host) { if (m.t === 'cmd' && inRun()) RT.applyCmd(m.from, m.c); return; }
+    // a guest from here on: only the host's word counts
+    if (m.t === 'lobby') { if (st.hostId && m.from !== st.hostId) return; st.hostId = m.from; st.players = m.players; st.owners = m.owners; st.status = ''; if (inRun()) RT.R.mp.owners = m.owners; return render(); }
+    if (m.t === 'snap' && m.from === st.hostId) {
+      if (st.dismissed === m.s.seed && m.s.result) return;
+      if (!inRun() || RT.R.seed !== m.s.seed) { st.dismissed = null; RT.guestStart(m.s, mpInfo()); } else RT.guestSnap(m.s); }
+  }
+  function lobbyOut(){ send({t:'lobby', players:st.players, owners:st.owners}); }
+  /* the host's default split: the captain stays with the host, the rest go round the table */
+  function share(){ const ids = st.players.map(p => p.id); CREW.forEach((k, i) => { st.owners[k] = ids[i % ids.length]; }); st.owners.sgt = st.me; lobbyOut(); }
+
+  /* the host starts the run: the first contract, signed as it stands, straight to the Ashway */
+  function startRun(){
+    if (!st.host || !st.open) return;
+    S = newState(st.name || 'Hask'); S.f.ttg_manifest = 1; S.f.ttg_casket = 'signed'; S.f.ttg_osselIn = 1; S.f.ttg_together = 1; save();
+    startBattle('ttg_ashway', {mp:mpInfo()});
+  }
+  /* after a run: back to the room, still connected */
+
+  /* ---------------- the screen ---------------- */
+  function showLobby(){
+    if (S && !S._guest && view !== 'lobby') save();
+    view = 'lobby'; B = null; titleAnim = null; document.body.classList.remove('rt'); $('#sheet').hidden = true; toTop();
+    if (!S) { S = newState(st.name || savedName() || 'Hask'); S._guest = 1; }
+    try { AUDIO.setScene('explore'); } catch (e) {}
+    $('#app').innerHTML = `<header class="hud"><div><div class="loc">Play together</div><div class="sub">One carriage, a crew of friends</div></div><div class="hudr"><button class="btn" id="lbTitle">Title</button></div></header><div class="lobby ubar" id="lobby"></div>`;
+    $('#lbTitle').onclick = () => { try { AUDIO.play('click'); } catch (e) {} leave(); S = null; showTitle(); };
+    render();
+  }
+  function render(){
+    const el = $('#lobby'); if (!el || view !== 'lobby') return;
+    const on = !!st.ws, open = st.open && on;
+    if (!on && !open) {
+      el.innerHTML = `<p class="txt">Everyone plays on their own phone or computer. One of you hosts and gets a four-letter code; the others type it in. It works the same on one wifi or across the world.</p>
+        <div class="field"><label for="lbName">Your name</label><input type="text" id="lbName" maxlength="18" value="${esc(st.name || savedName() || '')}" placeholder="Your name" autocomplete="off" autocapitalize="words" spellcheck="false"></div>
+        <div class="lbrow"><button class="btn primary" id="lbHost">Host a run</button></div>
+        <div class="field"><label for="lbCode">Or join with a code</label><div class="lbrow"><input type="text" id="lbCode" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn" id="lbJoin">Join</button></div></div>
+        <p class="fine lbmsg" role="status">${esc(st.status || '')}</p>`;
+      const nm = () => ($('#lbName').value || '').trim().slice(0, 18) || 'Shareholder';
+      $('#lbHost').onclick = () => { try { AUDIO.play('click'); } catch (e) {} let c = ''; for (let i = 0; i < 4; i++) c += LETTERS[Math.floor(Math.random() * LETTERS.length)]; connect(c, nm(), true); };
+      const join = () => { const c = ($('#lbCode').value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length !== 4) { st.status = 'A room code is four letters.'; return render(); } try { AUDIO.play('click'); } catch (e) {} connect(c, nm(), false); };
+      $('#lbJoin').onclick = join; $('#lbCode').onkeydown = e => { if (e.key === 'Enter') join(); };
+      return; }
+    const host = st.host, hostName = host ? st.name : nameOf(st.hostId);
+    const opts = k => st.players.map(p => `<option value="${p.id}" ${st.owners[k] === p.id ? 'selected' : ''}>${esc(p.name)}${p.id === st.me ? ' (you)' : ''}</option>`).join('');
+    el.innerHTML = `<div class="lbcode"><span>Room code</span><b>${esc(st.code)}</b></div>
+      <p class="fine">${host ? 'Give this code to the others. They open the game, choose Play together, and type it in.' : open ? `In ${esc(hostName)}'s room.` : ''}</p>
+      <div class="rh">The crew · ${st.players.length} ${st.players.length === 1 ? 'player' : 'players'}</div>
+      <ul class="lbplayers">${st.players.map(p => `<li>${esc(p.name)}${p.id === st.hostId ? ' <small>host</small>' : ''}${p.id === st.me ? ' <small>you</small>' : ''}</li>`).join('')}</ul>
+      ${open && st.hostId ? `<div class="rh">Who drives whom</div><div class="lbcrew">${CREW.map(k => `<label for="lbo_${k}">${esc(NAME(k))} <small>${esc(TPL[k] ? (k === 'sgt' ? 'captain' : TPL[k].role || '') : '')}</small></label>${host ? `<select id="lbo_${k}" data-k="${k}">${opts(k)}</select>` : `<span class="own" id="lbo_${k}">${esc(nameOf(st.owners[k]))}${st.owners[k] === st.me ? ' (you)' : ''}</span>`}`).join('')}</div>` : ''}
+      <div class="lbrow">${host ? `<button class="btn primary" id="lbStart" ${open ? '' : 'disabled'}>Start the run</button>` : ''}<button class="btn" id="lbLeave">Leave the room</button></div>
+      <p class="fine lbmsg" role="status">${esc(st.status || (host ? '' : open ? `Waiting for ${hostName} to start the run.` : ''))}</p>`;
+    if (host) { el.querySelectorAll('select[data-k]').forEach(s => s.onchange = () => { st.owners[s.dataset.k] = s.value; lobbyOut(); });
+      $('#lbStart').onclick = () => { try { AUDIO.play('click'); } catch (e) {} startRun(); }; }
+    $('#lbLeave').onclick = () => { try { AUDIO.play('click'); } catch (e) {} leave(); render(); };
+  }
+  return {connect, leave, send, nameOf, mpInfo, showLobby, startRun, render, st, CREW};
+})();
+
+/* a guest's game is never saved: it is only a window on the host's run */
+{ const _save = save; save = function(){ if (S && S._guest) return; return _save.apply(this, arguments); }; }
+
+/* the title gets a way in */
+{ const _showTitle = showTitle; showTitle = function(){ const r = _showTitle.apply(this, arguments);
+  try { if (view === 'title' && !$('#bTogether')) { const host = $('.tbtns'); if (host) { const b = document.createElement('button'); b.className = 'btn primary'; b.id = 'bTogether'; b.textContent = 'Play together';
+    b.onclick = () => { try { AUDIO.play('click'); } catch (e) {} S = null; MP.showLobby(); }; host.prepend(b); } } } catch (e) { console.warn('together button', e); }
+  return r; }; }
+
 /* ============ v13.4 toughness reset (David, Nov 12-13, 2026; series-polish-plan.md §0c.1) ============
    Books One to Five drop an ordinary soldier in about six good hits; from Book Six it drifted, and Books Eight to Ten were fights against
    four or five 200-health sponges, which is why munitions, pushback and the Whisper faded there. David chose "B, plus A for the tiny fights":
@@ -13492,7 +13630,9 @@ const RT = (() => {
   function finish(){
     if (!R || !R.result) return;
     const def = R.def;
-    if (R.result === 'lose') { tallyT('retries'); S = migrate(JSON.parse(R.snap)); return begin2(R.id, def, {}); }
+    if (R.mp && !R.mp.host) { MP.st.dismissed = R.seed; R = null; stopLoop(); MP.showLobby(); return; } // a guest: the host carries the story on
+    if (R.result === 'lose') { tallyT('retries'); const mp = R.mp; S = migrate(JSON.parse(R.snap)); return begin2(R.id, def, {mp}); }
+    if (R.mp) MP.send({t:'over'});
     const lost = (R.left || []).filter(a => a.key !== 'sgt');
     S.f.ttg_cratesLeft = cratesLeft(); S.f.ttg_casketSafe = R.crates.some(c => c.key === 'casket' && c.hp > 0) ? 1 : 0;
     S.f.ttg_cargoValue = cargoValue(); S.f.ttg_lost = lost.length ? listOf(lost.map(a => a.name)) : '';
@@ -13513,6 +13653,10 @@ const RT = (() => {
   let cv = null, ctx = null, bg = null, raf = 0, last = 0, acc = 0, hudKey = '', logKey = '';
   function begin2(id, def, opt){
     begin(id, def, opt);
+    if (opt.mp) { R.mp = Object.assign({}, opt.mp, {host:true}); R.selected = crew().find(mine) || null; log('Every shareholder answers to one of you. Pause stops the run for everyone.'); }
+    screen(def);
+  }
+  function screen(def){
     view = 'rtbattle'; B = null; document.body.classList.add('rt'); try { AUDIO.setScene(def.music || 'battle'); } catch (e) {}
     $('#sheet').hidden = true; toTop();
     const known = R.known;
@@ -13525,10 +13669,11 @@ const RT = (() => {
       <div class="hint rthelp">Tap a shareholder, then tap ground to move, an enemy to attack, or the carriage to climb aboard. Riders tap a tile beside the carriage to jump down. Space pauses, 1 to 5 select, Q uses a skill.</div>`;
     bindHud();
     cv = $('#rtcv'); ctx = cv.getContext('2d');
-    $('#rtPause').onclick = () => { click(); setPaused(!R.paused); };
-    $('#rtSkill').onclick = () => { click(); if (R.selected) useSkill(R.selected); };
-    $('#rtBoard').onclick = () => { click(); const s = sel(); if (!s) return; if (s.seat >= 0) orderJump(s, s.x, s.y - 1); else orderBoard(s); };
-    $('#rtHold').onclick = () => { click(); if (!driverAboard()) return; R.carriage.hold = !R.carriage.hold; log(R.carriage.hold ? 'The driver hauls on the reins. The carriage holds.' : 'The driver lets the horses run.'); };
+    $('#rtPause').onclick = () => { click(); act({c:'pause', p:!R.paused}); };
+    $('#rtSkill').onclick = () => { click(); const s = sel(); if (s) act({c:'skill', a:s.id}); };
+    $('#rtBoard').onclick = () => { click(); const s = sel(); if (!s) return; if (s.seat >= 0) act({c:'jump', a:s.id, x:s.x, y:s.y - 1}); else act({c:'board', a:s.id}); };
+    $('#rtHold').onclick = () => { click(); act({c:'hold'}); };
+    if (R.mp && !R.mp.host) { $('#rtAuto').hidden = $('#rtSpeed').hidden = true; }
     $('#rtAuto').onclick = () => { click(); prefs.auto = !prefs.auto; savePrefs(); };
     $('#rtSpeed').onclick = () => { click(); prefs.speed = prefs.speed === 1 ? 2 : 1; savePrefs(); };
     $('#rtGo').onclick = () => { click(); finish(); };
@@ -13537,7 +13682,25 @@ const RT = (() => {
     layout(); if (!raf) { last = performance.now(); acc = 0; raf = requestAnimationFrame(frame); }
   }
   const click = () => { try { AUDIO.play('click'); } catch (e) {} };
-  const sel = () => R && R.selected && R.selected.alive ? R.selected : null;
+  const sel = () => R && R.selected && R.selected.alive && mine(R.selected) ? R.selected : null;
+  /* together: who holds which shareholder (owners: key -> player id); alone, every one is yours */
+  const mine = a => !R || !R.mp || a.side !== 'squad' || (R.mp.owners[a.key] || R.mp.hostId) === R.mp.me;
+  const ownerOf = a => R.mp ? (R.mp.owners[a.key] || R.mp.hostId) : null;
+  /* every order goes through here: alone or hosting it is applied at once, as a guest it goes to the host */
+  function act(c){ if (!R || R.result) return; if (R.mp && !R.mp.host) { MP.send({t:'cmd', c, to:R.mp.hostId}); return; } applyCmd(R.mp ? R.mp.me : null, c); }
+  function applyCmd(from, c){
+    if (!R || R.result || !c) return;
+    const byId = id => R.actors.find(a => a.id === id), a = c.a != null ? byId(c.a) : null;
+    if (a && (a.side !== 'squad' || !a.alive)) return;
+    if (a && R.mp && from && ownerOf(a) !== from) return; // only the player who holds a shareholder gives them orders
+    if (c.c === 'move' && a && inB(c.x, c.y)) { if (a.seat >= 0) orderJump(a, c.x, c.y); else orderMove(a, c.x, c.y); }
+    else if (c.c === 'jump' && a) orderJump(a, c.x, c.y);
+    else if (c.c === 'board' && a) orderBoard(a);
+    else if (c.c === 'attack' && a) { const t = byId(c.t); if (t && t.alive && t.side === 'enemy') orderAttack(a, t); }
+    else if (c.c === 'skill' && a) useSkill(a);
+    else if (c.c === 'hold') { if (!driverAboard()) return; R.carriage.hold = !R.carriage.hold; log(R.carriage.hold ? 'The driver hauls on the reins. The carriage holds.' : 'The driver lets the horses run.'); }
+    else if (c.c === 'pause') { setPaused(!!c.p); if (c.p && R.mp && from && from !== R.mp.me) R.pauseReason = `${MP.nameOf(from)} paused the run.`; }
+  }
   function setPaused(p){ if (R.result) return; R.paused = p; if (p) R.pauseReason = 'Give orders, then press Resume.'; }
   function stopLoop(){ if (raf) cancelAnimationFrame(raf); raf = 0; document.body.classList.remove('rt'); }
 
@@ -13660,8 +13823,8 @@ const RT = (() => {
 
   /* ---------------- the HUD ---------------- */
   function buildRoster(){
-    $('#rtRoster').innerHTML = crew().map((a, i) => `<button class="rtcard" data-i="${i}"><span class="top"><span class="nm">${i + 1}. ${esc(a.name)}</span><span class="rl">${esc(a.role)}</span></span><span class="grit"><i></i></span><span class="st"></span></button>`).join('');
-    $('#rtRoster').onclick = e => { const b = e.target.closest('[data-i]'); if (!b || !R) return; const a = crew()[+b.dataset.i]; if (a && a.alive) { if (R.selected === a && a.skill) useSkill(a); R.selected = a; click(); } };
+    $('#rtRoster').innerHTML = crew().map((a, i) => `<button class="rtcard${R.mp && !mine(a) ? ' other' : ''}" data-i="${i}"><span class="top"><span class="nm">${i + 1}. ${esc(a.name)}</span><span class="rl">${esc(R.mp ? (mine(a) ? 'yours' : MP.nameOf(ownerOf(a))) : a.role)}</span></span><span class="grit"><i></i></span><span class="st"></span></button>`).join('');
+    $('#rtRoster').onclick = e => { const b = e.target.closest('[data-i]'); if (!b || !R) return; const a = crew()[+b.dataset.i]; if (a && a.alive && mine(a)) { if (R.selected === a && a.skill) act({c:'skill', a:a.id}); R.selected = a; click(); } };
   }
   function status(a){ if (a.carried) return 'Down, on the carriage'; if (a.down) return 'Down'; if (!a.alive) return 'Gone'; const o = a.order;
     if (o && o.type === 'attack') return 'Attacking ' + o.target.name; if (o && o.type === 'board') return 'To the carriage'; if (o && (o.type === 'move' || o.type === 'jump')) return 'Moving';
@@ -13683,7 +13846,7 @@ const RT = (() => {
       $('#rtSpeed').textContent = prefs.speed + '×';
       crew().forEach((a, i) => { const b = $(`#rtRoster [data-i="${i}"]`); if (!b) return; b.classList.toggle('sel', a === R.selected && a.alive); b.classList.toggle('down', !a.alive);
         b.querySelector('.grit i').style.width = (100 * Math.max(0, a.grit) / a.maxGrit) + '%'; b.querySelector('.st').innerHTML = esc(status(a)) + (a.wounds && a.alive ? ` <span class="w">· ${a.wounds} wound${a.wounds > 1 ? 's' : ''}</span>` : ''); });
-      const ov = $('#rtOver'); if (R.result) { ov.hidden = false; $('#rtOt').textContent = R.result === 'win' ? 'Through the gate' : 'The run fails'; $('#rtOt').className = 'rtot ' + R.result; $('#rtOx').textContent = R.summary; $('#rtGo').textContent = R.result === 'win' ? 'Out into the rain' : 'Run the Ashway again'; } else ov.hidden = true;
+      const ov = $('#rtOver'); if (R.result) { ov.hidden = false; $('#rtOt').textContent = R.result === 'win' ? 'Through the gate' : 'The run fails'; $('#rtOt').className = 'rtot ' + R.result; $('#rtOx').textContent = R.summary; $('#rtGo').textContent = R.mp && !R.mp.host ? 'Back to the crew' : R.result === 'win' ? 'Out into the rain' : 'Run the Ashway again'; } else ov.hidden = true;
     }
     const lk = R.log.length + ':' + R.log[R.log.length - 1]; if (lk !== logKey) { logKey = lk; $('#rtLog').innerHTML = R.log.slice(window.innerWidth <= 520 ? -2 : -3).map(l => `<div>${esc(l)}</div>`).join(''); }
   }
@@ -13693,18 +13856,18 @@ const RT = (() => {
   function tap(ev){
     if (!R || R.result) return; const r = cv.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top;
     const hit = actorAt(px, py), s = sel();
-    if (hit && hit.side === 'squad') { if (s === hit && hit.seat < 0 && !hit.order && hit.skill) {} R.selected = hit; click(); return; }
+    if (hit && hit.side === 'squad' && mine(hit)) { R.selected = hit; click(); return; }
     if (!s) return;
-    if (hit && hit.side === 'enemy') { orderAttack(s, hit); click(); return; }
+    if (hit && hit.side === 'enemy') { act({c:'attack', a:s.id, t:hit.id}); click(); return; }
     const [x, y] = cellAt(px, py); if (!inB(x, y)) return;
-    if (isCar(x, y)) { if (s.seat < 0) orderBoard(s); click(); return; }
+    if (isCar(x, y)) { if (s.seat < 0) act({c:'board', a:s.id}); click(); return; }
     if (tile(x, y) === ROCK) return;
-    if (s.seat >= 0) orderJump(s, x, y); else orderMove(s, x, y); click();
+    act({c:s.seat >= 0 ? 'jump' : 'move', a:s.id, x, y}); click();
   }
   window.addEventListener('keydown', e => {
     if (view !== 'rtbattle' || !R) return; if (!$('#sheet').hidden || ($('#settings') && !$('#settings').hidden) || ($('#chars') && !$('#chars').hidden)) return;
-    if (e.code === 'Space') { e.preventDefault(); if (R.result) finish(); else setPaused(!R.paused); }
-    else if (/^Digit[1-5]$/.test(e.code)) { const a = crew()[+e.code.slice(5) - 1]; if (a && a.alive) R.selected = a; }
+    if (e.code === 'Space') { e.preventDefault(); if (R.result) finish(); else act({c:'pause', p:!R.paused}); }
+    else if (/^Digit[1-5]$/.test(e.code)) { const a = crew()[+e.code.slice(5) - 1]; if (a && a.alive && mine(a)) R.selected = a; }
     else if (e.code === 'KeyB') $('#rtBoard').click(); else if (e.code === 'KeyH') $('#rtHold').click(); else if (e.code === 'KeyQ') $('#rtSkill').click();
     else return;
     e.stopImmediatePropagation();
@@ -13715,12 +13878,56 @@ const RT = (() => {
     raf = 0;
     if (view !== 'rtbattle' || !R || !cv || !cv.isConnected) { stopLoop(); return; }
     const dt = Math.min(.1, (now - last) / 1000); last = now;
-    if (!R.paused && !R.result) { acc += dt * prefs.speed; while (acc >= STEP) { update(STEP); acc -= STEP; } }
+    if (R.mp && !R.mp.host) guestTick(dt);
+    else { if (!R.paused && !R.result) { acc += dt * prefs.speed; while (acc >= STEP) { update(STEP); acc -= STEP; } }
+      if (R.mp && (now - (R.mp.sent || 0) > 100 || R.result && !R.mp.sentEnd)) { R.mp.sent = now; if (R.result) R.mp.sentEnd = 1; MP.send({t:'snap', s:snapshot()}); } }
     layout(); draw(now); hud();
     raf = requestAnimationFrame(frame);
   }
 
-  return {start:begin2, update, finish, useSkill, skillState, orderMove, orderAttack, orderBoard, orderJump, freeSeat, toCar, enemies, squad, crew, inRange, setPaused, prefs,
+  /* ---------------- together: the host's fight, sent ten times a second; a guest draws what it is sent ---------------- */
+  const ORD = o => !o ? null : o.type === 'attack' ? {type:'attack', t:o.target.id} : Object.assign({}, o);
+  const AK = ['id', 'side', 'key', 'name', 'fig', 'role', 'x', 'y', 'nx', 'ny', 'stepT', 'stepDur', 'grit', 'maxGrit', 'wounds', 'alive', 'down', 'carried', 'seat', 'face', 'flash', 'swing', 'skill', 'driver', 'roof', 'magic', 'range', 'arrived', 'cargo'];
+  function snapshot(){
+    return {id:R.id, seed:R.seed, t:R.t, drift:R.drift, nextDrift:R.nextDrift, every:R.every, anchorT:R.anchorT, braceT:R.braceT, rallyT:R.rallyT, known:R.known,
+      paused:R.paused, pauseReason:R.pauseReason, result:R.result, summary:R.summary, owners:R.mp.owners, hostId:R.mp.me, used:R.used, cdT:R.cdT,
+      car:{x:R.carriage.x, y:R.carriage.y, anim:R.carriage.anim, hold:R.carriage.hold}, tiles:R.tiles.map(r => r.join('')).join('/'),
+      crates:R.crates, log:R.log.slice(-6), logN:R.log.length,
+      actors:R.actors.filter(a => a.alive || a.side === 'squad').map(a => { const o = {}; AK.forEach(k => { if (a[k] !== undefined) o[k] = a[k]; }); o.order = ORD(a.order); return o; }),
+      fx:R.fx.map(f => f.kind === 'shot' ? {kind:'shot', from:f.from.id, to:f.to.id, magic:f.magic, t:f.t} : f)};
+  }
+  /* a guest: build the board from the battle def, then take everything else from the host */
+  function guestStart(s, mp){
+    const def = (typeof battleDef === 'function' ? battleDef(s.id) : BATTLES[s.id]); if (!def) return;
+    const map = def.map;
+    R = {id:s.id, def, seed:s.seed, w:map[0].length, h:map.length, road:map.map(r => [...r].map(c => c === '~')), actors:[], fx:[], log:[], crates:[], carriage:{x:0, y:0, anim:1}, mp:Object.assign({}, mp, {host:false}), selected:null};
+    guestSnap(s); R.selected = crew().find(mine) || null; screen(def);
+  }
+  function guestSnap(s){
+    if (!R || R.seed !== s.seed || R.id !== s.id) return guestStart(s, R ? R.mp : MP.mpInfo());
+    ['t', 'drift', 'nextDrift', 'every', 'anchorT', 'braceT', 'rallyT', 'known', 'paused', 'pauseReason', 'summary', 'used', 'cdT'].forEach(k => { R[k] = s[k]; });
+    if (s.result && !R.result) onEndGuest(s); R.result = s.result;
+    R.mp.owners = s.owners || {}; R.mp.hostId = s.hostId;
+    R.tiles = s.tiles.split('/').map(r => [...r].map(Number)); R.crates = s.crates;
+    const c = R.carriage; if (c.x !== s.car.x) c.anim = Math.min(c.anim, s.car.anim); c.x = s.car.x; c.y = s.car.y; c.hold = s.car.hold; if (s.car.anim >= 1) c.anim = 1;
+    const old = new Map(R.actors.map(a => [a.id, a]));
+    R.actors = s.actors.map(o => { const a = old.get(o.id) || {}; Object.keys(a).forEach(k => { if (!(k in o)) delete a[k]; }); Object.assign(a, o); if (a.nx === undefined) a.nx = null; return a; });
+    const byId = new Map(R.actors.map(a => [a.id, a]));
+    R.actors.forEach(a => { if (a.order && a.order.type === 'attack') { const t = byId.get(a.order.t); a.order = t ? {type:'attack', target:t} : null; } });
+    R.fx = s.fx.map(f => f.kind === 'shot' ? (byId.get(f.from) && byId.get(f.to) ? {kind:'shot', from:byId.get(f.from), to:byId.get(f.to), magic:f.magic, t:f.t} : null) : f).filter(Boolean);
+    if (s.logN !== R.logN) { R.log = s.log; R.logN = s.logN; }
+    if (R.selected && !byId.has(R.selected.id)) R.selected = null;
+    if (!sel()) R.selected = crew().find(a => a.alive && mine(a)) || null;
+    if (R.rosterKey !== JSON.stringify(s.owners)) { R.rosterKey = JSON.stringify(s.owners); if (cv && cv.isConnected) buildRoster(); }
+  }
+  function onEndGuest(s){ try { AUDIO.play(s.result === 'win' ? 'win' : 'lose'); } catch (e) {} }
+  function guestTick(dt){ // between the host's messages: steps keep walking, the carriage keeps rolling, effects keep fading
+    for (const a of R.actors) if (a.nx !== null && a.nx !== undefined && !R.paused) a.stepT = Math.min(.98, a.stepT + dt / (a.stepDur || 1));
+    if (!R.paused) R.carriage.anim = Math.min(1, R.carriage.anim + dt / .4);
+    for (const f of R.fx) f.t += dt; R.fx = R.fx.filter(f => f.t < (f.kind === 'shot' ? .2 : .9));
+  }
+
+  return {start:begin2, guestStart, guestSnap, applyCmd, snapshot, mine, update, finish, useSkill, skillState, orderMove, orderAttack, orderBoard, orderJump, freeSeat, toCar, enemies, squad, crew, inRange, setPaused, prefs,
     get R(){ return R; }};
 })();
 window.__rt = RT;
